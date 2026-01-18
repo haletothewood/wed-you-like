@@ -1,7 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import JSConfetti from 'js-confetti'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Guest {
   id: string
@@ -53,6 +71,8 @@ export default function RSVP() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
+  const jsConfetti = useRef<JSConfetti | null>(null)
+
   // Form state
   const [isAttending, setIsAttending] = useState<boolean | null>(null)
   const [adultsAttending, setAdultsAttending] = useState(0)
@@ -75,14 +95,12 @@ export default function RSVP() {
       const data = await response.json()
       setInvite(data.invite)
 
-      // Pre-fill form if already responded
       if (data.invite.hasResponded && data.invite.rsvp) {
         setIsAttending(data.invite.rsvp.isAttending)
         setAdultsAttending(data.invite.rsvp.adultsAttending)
         setChildrenAttending(data.invite.rsvp.childrenAttending)
         setDietaryRequirements(data.invite.rsvp.dietaryRequirements || '')
       } else {
-        // Default to full party size
         setAdultsAttending(data.invite.adultsCount)
         setChildrenAttending(data.invite.childrenCount)
       }
@@ -96,6 +114,10 @@ export default function RSVP() {
   useEffect(() => {
     fetchInvite()
   }, [fetchInvite])
+
+  useEffect(() => {
+    jsConfetti.current = new JSConfetti()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,6 +177,19 @@ export default function RSVP() {
       }
 
       setSubmitted(true)
+
+      // Celebrate with confetti! 🎉
+      if (jsConfetti.current) {
+        jsConfetti.current.addConfetti({
+          confettiColors: [
+            '#FFADAD', // Pastel Pink
+            '#FFD6A5', // Pastel Peach
+            '#FDFFB6', // Pastel Yellow
+            '#CAFFBF', // Pastel Green
+          ],
+          confettiNumber: 500,
+        })
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to submit RSVP')
     } finally {
@@ -162,44 +197,76 @@ export default function RSVP() {
     }
   }
 
+  const handleMealSelection = (guestId: string, courseType: string, mealOptionId: string) => {
+    setMealSelections((prev) => ({
+      ...prev,
+      [guestId]: {
+        ...prev[guestId],
+        [courseType]: mealOptionId,
+      },
+    }))
+  }
+
+  const toggleMultipleChoice = (questionId: string, option: string) => {
+    setMultipleChoiceSelections((prev) => {
+      const current = prev[questionId] || []
+      const isSelected = current.includes(option)
+      return {
+        ...prev,
+        [questionId]: isSelected
+          ? current.filter((o) => o !== option)
+          : [...current, option],
+      }
+    })
+  }
+
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', background: 'white', padding: '3rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✉️</div>
-          <p style={{ color: '#555' }}>Loading invitation...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <LoadingSpinner text="Loading your invitation..." />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', background: 'white', padding: '3rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: '500px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>😕</div>
-          <h1 style={{ color: '#2c3e50', marginBottom: '1rem' }}>Oops!</h1>
-          <p style={{ color: '#dc3545' }}>{error}</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md text-center">
+          <CardHeader>
+            <div className="text-6xl mb-4">😕</div>
+            <CardTitle>Oops!</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (submitted) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-        <div style={{ textAlign: 'center', background: 'white', padding: '3rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: '600px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🎉</div>
-          <h1 style={{ color: '#2c3e50', marginBottom: '1rem', fontSize: '2rem' }}>Thank You!</h1>
-          <p style={{ color: '#555', marginBottom: '1rem', fontSize: '1.125rem' }}>
-            Your RSVP has been {invite?.hasResponded ? 'updated' : 'submitted'} successfully.
-          </p>
-          {isAttending ? (
-            <p style={{ color: '#27ae60', fontSize: '1.125rem' }}>We look forward to seeing you at the wedding!</p>
-          ) : (
-            <p style={{ color: '#7f8c8d', fontSize: '1.125rem' }}>We&apos;re sorry you can&apos;t make it.</p>
-          )}
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-lg text-center">
+          <CardHeader>
+            <div className="text-7xl mb-4">🎉</div>
+            <CardTitle className="text-3xl">Thank You!</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-lg">
+              Your RSVP has been {invite?.hasResponded ? 'updated' : 'submitted'} successfully.
+            </p>
+            {isAttending ? (
+              <p className="text-lg text-success font-semibold">
+                We look forward to seeing you at the wedding!
+              </p>
+            ) : (
+              <p className="text-lg text-muted-foreground">
+                We&apos;re sorry you can&apos;t make it.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -209,438 +276,282 @@ export default function RSVP() {
   }
 
   const displayName = invite.groupName || invite.guests[0]?.name || 'Guest'
+  const starters = invite.mealOptions.filter((m) => m.courseType === 'STARTER')
+  const mains = invite.mealOptions.filter((m) => m.courseType === 'MAIN')
+  const desserts = invite.mealOptions.filter((m) => m.courseType === 'DESSERT')
 
   return (
-    <div style={{ minHeight: '100vh', padding: '2rem' }}>
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        {/* Header Card */}
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '2rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💒</div>
-          <h1 style={{ color: '#2c3e50', marginBottom: '0.5rem', fontSize: '2rem' }}>Wedding RSVP</h1>
-          <h2 style={{ color: '#7f8c8d', fontSize: '1.25rem', fontWeight: 'normal' }}>
-            For: {displayName}
-          </h2>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent p-4 py-12">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card className="text-center">
+          <CardHeader>
+            <div className="text-6xl mb-4">💒</div>
+            <CardTitle className="text-3xl">Wedding RSVP</CardTitle>
+            <CardDescription className="text-lg">For: {displayName}</CardDescription>
+          </CardHeader>
+        </Card>
 
-        {/* Already Responded Alert */}
         {invite.hasResponded && (
-          <div
-            style={{
-              padding: '1.5rem',
-              background: '#e8f4f8',
-              border: '1px solid #b8daec',
-              borderRadius: '12px',
-              marginBottom: '1.5rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '1.25rem' }}>ℹ️</span>
-              <strong style={{ color: '#2c3e50' }}>You have already responded to this invitation.</strong>
-            </div>
-            <p style={{ margin: 0, color: '#555', fontSize: '0.9rem' }}>
-              You can update your RSVP below.
-            </p>
-          </div>
+          <Alert>
+            <AlertDescription>
+              <div className="flex items-center gap-2">
+                <span>ℹ️</span>
+                <strong>You have already responded to this invitation.</strong>
+              </div>
+              <p className="text-sm mt-1">You can update your RSVP below.</p>
+            </AlertDescription>
+          </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Attendance Selection Card */}
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#2c3e50' }}>Will you be attending?</h3>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Will you be attending?</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <Button
                 type="button"
+                size="lg"
+                variant={isAttending === true ? 'default' : 'outline'}
+                className={isAttending === true ? 'bg-success hover:bg-success/90' : ''}
                 onClick={() => setIsAttending(true)}
-                style={{
-                  padding: '1rem 2rem',
-                  fontSize: '1rem',
-                  border: isAttending === true ? '2px solid #27ae60' : '2px solid #ddd',
-                  background: isAttending === true ? '#27ae60' : 'white',
-                  color: isAttending === true ? 'white' : '#555',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  flex: 1,
-                  fontWeight: isAttending === true ? 'bold' : 'normal',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  if (isAttending !== true) {
-                    e.currentTarget.style.borderColor = '#27ae60'
-                    e.currentTarget.style.color = '#27ae60'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isAttending !== true) {
-                    e.currentTarget.style.borderColor = '#ddd'
-                    e.currentTarget.style.color = '#555'
-                  }
-                }}
               >
                 Yes, I&apos;ll be there
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="lg"
+                variant={isAttending === false ? 'destructive' : 'outline'}
                 onClick={() => setIsAttending(false)}
-                style={{
-                  padding: '1rem 2rem',
-                  fontSize: '1rem',
-                  border: isAttending === false ? '2px solid #dc3545' : '2px solid #ddd',
-                  background: isAttending === false ? '#dc3545' : 'white',
-                  color: isAttending === false ? 'white' : '#555',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  flex: 1,
-                  fontWeight: isAttending === false ? 'bold' : 'normal',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  if (isAttending !== false) {
-                    e.currentTarget.style.borderColor = '#dc3545'
-                    e.currentTarget.style.color = '#dc3545'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isAttending !== false) {
-                    e.currentTarget.style.borderColor = '#ddd'
-                    e.currentTarget.style.color = '#555'
-                  }
-                }}
               >
                 Sorry, I can&apos;t make it
-              </button>
-            </div>
-          </div>
+              </Button>
+            </CardContent>
+          </Card>
 
           {isAttending && (
             <>
-              {/* Guest Count Card */}
-              <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#2c3e50' }}>How many people will be attending?</h3>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555', fontWeight: '500' }}>
-                      Adults (max {invite.adultsCount})
-                    </label>
-                    <input
+              <Card>
+                <CardHeader>
+                  <CardTitle>How many people will be attending?</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adults">Adults (max {invite.adultsCount})</Label>
+                    <Input
+                      id="adults"
                       type="number"
                       min="0"
                       max={invite.adultsCount}
                       value={adultsAttending}
-                      onChange={(e) =>
-                        setAdultsAttending(parseInt(e.target.value))
-                      }
+                      onChange={(e) => setAdultsAttending(parseInt(e.target.value))}
                       required
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        fontSize: '1rem',
-                        border: '2px solid #ddd',
-                        borderRadius: '8px',
-                        fontFamily: 'system-ui'
-                      }}
                     />
                   </div>
-                  {invite.childrenCount > 0 && (
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555', fontWeight: '500' }}>
-                        Children (max {invite.childrenCount})
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max={invite.childrenCount}
-                        value={childrenAttending}
-                        onChange={(e) =>
-                          setChildrenAttending(parseInt(e.target.value))
-                        }
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          fontSize: '1rem',
-                          border: '2px solid #ddd',
-                          borderRadius: '8px',
-                          fontFamily: 'system-ui'
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="children">Children (max {invite.childrenCount})</Label>
+                    <Input
+                      id="children"
+                      type="number"
+                      min="0"
+                      max={invite.childrenCount}
+                      value={childrenAttending}
+                      onChange={(e) => setChildrenAttending(parseInt(e.target.value))}
+                      required
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Dietary Requirements Card */}
-              <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#2c3e50' }}>Dietary Requirements (optional)</h3>
-                <textarea
-                  value={dietaryRequirements}
-                  onChange={(e) => setDietaryRequirements(e.target.value)}
-                  placeholder="Please let us know of any dietary requirements..."
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    fontSize: '1rem',
-                    fontFamily: 'system-ui',
-                    border: '2px solid #ddd',
-                    borderRadius: '8px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
+              {(starters.length > 0 || mains.length > 0 || desserts.length > 0) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Meal Selections</CardTitle>
+                    <CardDescription>Please select meal preferences for each guest</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {invite.guests.map((guest) => (
+                      <div key={guest.id} className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{guest.name}</Badge>
+                        </div>
 
-              {/* Meal Selection Card */}
-              {invite.mealOptions.length > 0 && (
-                <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>Meal Selection</h3>
-                  <p style={{ color: '#7f8c8d', fontSize: '0.9rem', margin: '0 0 1.5rem 0' }}>
-                    Please select meal preferences for each guest
-                  </p>
-                  {invite.guests.slice(0, adultsAttending + childrenAttending).map((guest) => {
-                    const starterOptions = invite.mealOptions.filter(o => o.courseType === 'STARTER')
-                    const mainOptions = invite.mealOptions.filter(o => o.courseType === 'MAIN')
-                    const dessertOptions = invite.mealOptions.filter(o => o.courseType === 'DESSERT')
-
-                    return (
-                      <div key={guest.id} style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#f8f9fa', border: '2px solid #e9ecef', borderRadius: '8px' }}>
-                        <h4 style={{ margin: '0 0 1rem 0', color: '#2c3e50', fontSize: '1.1rem' }}>{guest.name}</h4>
-
-                        {starterOptions.length > 0 && (
-                          <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#555' }}>
-                              Starter
-                            </label>
-                            <select
-                              value={mealSelections[guest.id]?.STARTER || ''}
-                              onChange={(e) => setMealSelections({
-                                ...mealSelections,
-                                [guest.id]: {
-                                  ...mealSelections[guest.id],
-                                  STARTER: e.target.value
-                                }
-                              })}
-                              style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                fontSize: '1rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                background: 'white',
-                                fontFamily: 'system-ui'
-                              }}
+                        {starters.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Starter</Label>
+                            <Select
+                              value={mealSelections[guest.id]?.STARTER}
+                              onValueChange={(value) => handleMealSelection(guest.id, 'STARTER', value)}
                             >
-                              <option value="">Select starter...</option>
-                              {starterOptions.map(option => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                  {option.description && ` - ${option.description}`}
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select starter" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {starters.map((meal) => (
+                                  <SelectItem key={meal.id} value={meal.id}>
+                                    {meal.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         )}
 
-                        {mainOptions.length > 0 && (
-                          <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#555' }}>
-                              Main Course
-                            </label>
-                            <select
-                              value={mealSelections[guest.id]?.MAIN || ''}
-                              onChange={(e) => setMealSelections({
-                                ...mealSelections,
-                                [guest.id]: {
-                                  ...mealSelections[guest.id],
-                                  MAIN: e.target.value
-                                }
-                              })}
-                              style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                fontSize: '1rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                background: 'white',
-                                fontFamily: 'system-ui'
-                              }}
+                        {mains.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Main Course</Label>
+                            <Select
+                              value={mealSelections[guest.id]?.MAIN}
+                              onValueChange={(value) => handleMealSelection(guest.id, 'MAIN', value)}
                             >
-                              <option value="">Select main course...</option>
-                              {mainOptions.map(option => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                  {option.description && ` - ${option.description}`}
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select main" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {mains.map((meal) => (
+                                  <SelectItem key={meal.id} value={meal.id}>
+                                    {meal.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         )}
 
-                        {dessertOptions.length > 0 && (
-                          <div style={{ marginBottom: '0' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#555' }}>
-                              Dessert
-                            </label>
-                            <select
-                              value={mealSelections[guest.id]?.DESSERT || ''}
-                              onChange={(e) => setMealSelections({
-                                ...mealSelections,
-                                [guest.id]: {
-                                  ...mealSelections[guest.id],
-                                  DESSERT: e.target.value
-                                }
-                              })}
-                              style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                fontSize: '1rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                background: 'white',
-                                fontFamily: 'system-ui'
-                              }}
+                        {desserts.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Dessert</Label>
+                            <Select
+                              value={mealSelections[guest.id]?.DESSERT}
+                              onValueChange={(value) => handleMealSelection(guest.id, 'DESSERT', value)}
                             >
-                              <option value="">Select dessert...</option>
-                              {dessertOptions.map(option => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                  {option.description && ` - ${option.description}`}
-                                </option>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select dessert" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {desserts.map((meal) => (
+                                  <SelectItem key={meal.id} value={meal.id}>
+                                    {meal.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {guest.id !== invite.guests[invite.guests.length - 1].id && (
+                          <Separator />
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {invite.customQuestions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Questions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {invite.customQuestions.map((question) => (
+                      <div key={question.id} className="space-y-2">
+                        <Label>
+                          {question.questionText}
+                          {question.isRequired && (
+                            <Badge variant="destructive" className="ml-2 text-xs">
+                              Required
+                            </Badge>
+                          )}
+                        </Label>
+
+                        {question.questionType === 'TEXT' && (
+                          <Textarea
+                            value={questionResponses[question.id] || ''}
+                            onChange={(e) =>
+                              setQuestionResponses({
+                                ...questionResponses,
+                                [question.id]: e.target.value,
+                              })
+                            }
+                            required={question.isRequired}
+                          />
+                        )}
+
+                        {question.questionType === 'SINGLE_CHOICE' && (
+                          <Select
+                            value={questionResponses[question.id]}
+                            onValueChange={(value) =>
+                              setQuestionResponses({
+                                ...questionResponses,
+                                [question.id]: value,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {question.options.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
                               ))}
-                            </select>
+                            </SelectContent>
+                          </Select>
+                        )}
+
+                        {question.questionType === 'MULTIPLE_CHOICE' && (
+                          <div className="space-y-2">
+                            {question.options.map((option) => (
+                              <div key={option} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${question.id}-${option}`}
+                                  checked={(multipleChoiceSelections[question.id] || []).includes(option)}
+                                  onCheckedChange={() => toggleMultipleChoice(question.id, option)}
+                                />
+                                <Label
+                                  htmlFor={`${question.id}-${option}`}
+                                  className="font-normal cursor-pointer"
+                                >
+                                  {option}
+                                </Label>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
+                    ))}
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Custom Questions Card */}
-              {invite.customQuestions.length > 0 && (
-                <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                  <h3 style={{ margin: '0 0 1.5rem 0', color: '#2c3e50' }}>Additional Questions</h3>
-                  {invite.customQuestions.map((question) => (
-                    <div key={question.id} style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#555' }}>
-                        {question.questionText}
-                        {question.isRequired && <span style={{ color: '#dc3545' }}> *</span>}
-                      </label>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dietary Requirements</CardTitle>
+                  <CardDescription>
+                    Please let us know of any allergies or dietary restrictions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={dietaryRequirements}
+                    onChange={(e) => setDietaryRequirements(e.target.value)}
+                    placeholder="e.g., Vegetarian, Gluten-free, Nut allergy..."
+                    rows={3}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-                      {question.questionType === 'TEXT' && (
-                        <textarea
-                          value={questionResponses[question.id] || ''}
-                          onChange={(e) => setQuestionResponses({
-                            ...questionResponses,
-                            [question.id]: e.target.value
-                          })}
-                          required={question.isRequired}
-                          rows={3}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            fontSize: '1rem',
-                            fontFamily: 'system-ui',
-                            border: '2px solid #ddd',
-                            borderRadius: '8px',
-                            resize: 'vertical'
-                          }}
-                        />
-                      )}
-
-                      {question.questionType === 'SINGLE_CHOICE' && (
-                        <select
-                          value={questionResponses[question.id] || ''}
-                          onChange={(e) => setQuestionResponses({
-                            ...questionResponses,
-                            [question.id]: e.target.value
-                          })}
-                          required={question.isRequired}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            fontSize: '1rem',
-                            border: '2px solid #ddd',
-                            borderRadius: '8px',
-                            background: 'white',
-                            fontFamily: 'system-ui'
-                          }}
-                        >
-                          <option value="">Select an option...</option>
-                          {question.options.map((option, index) => (
-                            <option key={index} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-
-                      {question.questionType === 'MULTIPLE_CHOICE' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
-                          {question.options.map((option, index) => (
-                            <label key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', color: '#555' }}>
-                              <input
-                                type="checkbox"
-                                checked={(multipleChoiceSelections[question.id] || []).includes(option)}
-                                onChange={(e) => {
-                                  const current = multipleChoiceSelections[question.id] || []
-                                  const updated = e.target.checked
-                                    ? [...current, option]
-                                    : current.filter(o => o !== option)
-                                  setMultipleChoiceSelections({
-                                    ...multipleChoiceSelections,
-                                    [question.id]: updated
-                                  })
-                                }}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                              />
-                              <span>{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-          </>
-        )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={submitting || isAttending === null}
-            style={{
-              width: '100%',
-              padding: '1rem 2rem',
-              fontSize: '1.1rem',
-              background: isAttending === null || submitting ? '#bdc3c7' : '#3498db',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: isAttending === null || submitting ? 'not-allowed' : 'pointer',
-              fontWeight: '600',
-              boxShadow: isAttending === null || submitting ? 'none' : '0 2px 8px rgba(52, 152, 219, 0.3)',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!submitting && isAttending !== null) {
-                e.currentTarget.style.background = '#2980b9'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 152, 219, 0.4)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!submitting && isAttending !== null) {
-                e.currentTarget.style.background = '#3498db'
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(52, 152, 219, 0.3)'
-              }
-            }}
-          >
-            {submitting
-              ? 'Submitting...'
-              : invite.hasResponded
-              ? 'Update RSVP'
-              : 'Submit RSVP'}
-          </button>
+          <Card className="bg-muted/30">
+            <CardContent className="pt-6">
+              <Button type="submit" disabled={submitting} size="lg" className="w-full">
+                {submitting ? 'Submitting...' : 'Submit RSVP'}
+              </Button>
+            </CardContent>
+          </Card>
         </form>
       </div>
     </div>

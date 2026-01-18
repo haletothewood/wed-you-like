@@ -1,6 +1,22 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface MealOption {
   id: string
@@ -20,9 +36,7 @@ export default function MealOptionsPage() {
   const [mealOptions, setMealOptions] = useState<MealOption[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [courseType, setCourseType] = useState<'STARTER' | 'MAIN' | 'DESSERT'>(
-    'MAIN'
-  )
+  const [courseType, setCourseType] = useState<'STARTER' | 'MAIN' | 'DESSERT'>('MAIN')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -92,10 +106,7 @@ export default function MealOptionsPage() {
     }
   }
 
-  const handleToggleAvailability = async (
-    id: string,
-    isAvailable: boolean
-  ) => {
+  const handleToggleAvailability = async (id: string, isAvailable: boolean) => {
     try {
       const response = await fetch(`/api/admin/meal-options/${id}`, {
         method: 'PUT',
@@ -121,177 +132,131 @@ export default function MealOptionsPage() {
   }
 
   if (loading) {
-    return (
-      <div style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-        <p>Loading meal options...</p>
-      </div>
-    )
+    return <LoadingSpinner text="Loading meal options..." />
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-      <h1>Meal Options Management</h1>
+    <div className="p-8">
+      <PageHeader
+        title="Meal Options Management"
+        description="Configure menu options for starters, mains, and desserts"
+      />
 
-      <div
-        style={{
-          marginTop: '2rem',
-          padding: '1.5rem',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          backgroundColor: '#f9f9f9',
-        }}
-      >
-        <h2>Add New Meal Option</h2>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Course Type
-            </label>
-            <select
-              value={courseType}
-              onChange={(e) =>
-                setCourseType(e.target.value as 'STARTER' | 'MAIN' | 'DESSERT')
-              }
-              required
-              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-            >
-              <option value="STARTER">Starter</option>
-              <option value="MAIN">Main Course</option>
-              <option value="DESSERT">Dessert</option>
-            </select>
-          </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Add New Meal Option</CardTitle>
+          <CardDescription>Create a new menu item for guests to choose from</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="courseType">Course Type</Label>
+              <Select
+                value={courseType}
+                onValueChange={(value) =>
+                  setCourseType(value as 'STARTER' | 'MAIN' | 'DESSERT')
+                }
+              >
+                <SelectTrigger id="courseType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STARTER">Starter</SelectItem>
+                  <SelectItem value="MAIN">Main Course</SelectItem>
+                  <SelectItem value="DESSERT">Dessert</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Name *
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="e.g., Grilled Salmon"
-              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="e.g., Grilled Salmon"
+              />
+            </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the meal..."
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                fontSize: '1rem',
-                fontFamily: 'system-ui',
-              }}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of the meal..."
+                rows={3}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              background: submitting ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? 'Adding...' : 'Add Meal Option'}
-          </button>
-        </form>
-      </div>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Adding...' : 'Add Meal Option'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <div style={{ marginTop: '2rem' }}>
+      <div className="space-y-6">
         {(['STARTER', 'MAIN', 'DESSERT'] as const).map((course) => (
-          <div
-            key={course}
-            style={{ marginBottom: '2rem' }}
-          >
-            <h2>{courseTypeLabels[course]}</h2>
+          <div key={course}>
+            <h2 className="text-2xl font-bold mb-4">{courseTypeLabels[course]}</h2>
             {groupedOptions[course].length === 0 ? (
-              <p style={{ color: '#666' }}>No {courseTypeLabels[course].toLowerCase()} options yet</p>
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  No {courseTypeLabels[course].toLowerCase()} options yet
+                </CardContent>
+              </Card>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="space-y-3">
                 {groupedOptions[course].map((option) => (
-                  <div
+                  <Card
                     key={option.id}
-                    style={{
-                      padding: '1rem',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      backgroundColor: option.isAvailable ? 'white' : '#f5f5f5',
-                      opacity: option.isAvailable ? 1 : 0.6,
-                    }}
+                    className={!option.isAvailable ? 'opacity-60' : ''}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: '0 0 0.5rem 0' }}>
-                          {option.name}
-                          {!option.isAvailable && (
-                            <span style={{ color: '#dc3545', fontSize: '0.9rem', marginLeft: '0.5rem' }}>
-                              (Unavailable)
-                            </span>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="flex items-center gap-2">
+                            {option.name}
+                            <Badge variant={option.isAvailable ? 'default' : 'secondary'}>
+                              {option.isAvailable ? 'Available' : 'Unavailable'}
+                            </Badge>
+                          </CardTitle>
+                          {option.description && (
+                            <CardDescription className="mt-2">
+                              {option.description}
+                            </CardDescription>
                           )}
-                        </h3>
-                        {option.description && (
-                          <p style={{ margin: 0, color: '#666' }}>
-                            {option.description}
-                          </p>
-                        )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant={option.isAvailable ? 'outline' : 'default'}
+                            size="sm"
+                            onClick={() =>
+                              handleToggleAvailability(option.id, option.isAvailable)
+                            }
+                          >
+                            {option.isAvailable ? 'Disable' : 'Enable'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(option.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() =>
-                            handleToggleAvailability(option.id, option.isAvailable)
-                          }
-                          style={{
-                            padding: '0.5rem 1rem',
-                            fontSize: '0.9rem',
-                            background: option.isAvailable ? '#ffc107' : '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {option.isAvailable ? 'Disable' : 'Enable'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(option.id)}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            fontSize: '0.9rem',
-                            background: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    </CardHeader>
+                  </Card>
                 ))}
               </div>
             )}
+            {course !== 'DESSERT' && <Separator className="mt-6" />}
           </div>
         ))}
       </div>

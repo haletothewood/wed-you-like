@@ -2,6 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,167 +45,50 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '2rem',
-      }}
-    >
-      <div
-        style={{
-          background: 'white',
-          padding: '3rem',
-          borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-          width: '100%',
-          maxWidth: '400px',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1
-            style={{
-              margin: '0 0 0.5rem 0',
-              color: '#2c3e50',
-              fontSize: '2rem',
-              fontWeight: 600,
-            }}
-          >
-            Wedding RSVP
-          </h1>
-          <p style={{ margin: 0, color: '#7f8c8d', fontSize: '0.95rem' }}>
-            Admin Portal
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="username"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                color: '#2c3e50',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            >
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '1rem',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3498db'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#ddd'
-              }}
-              required
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="password"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                color: '#2c3e50',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-              }}
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '1rem',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3498db'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#ddd'
-              }}
-              required
-            />
-          </div>
-
-          {error && (
-            <div
-              style={{
-                marginBottom: '1.5rem',
-                padding: '0.75rem',
-                background: '#fee',
-                border: '1px solid #fcc',
-                borderRadius: '6px',
-                color: '#c33',
-                fontSize: '0.9rem',
-              }}
-            >
-              {error}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-accent p-4">
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="text-center space-y-2">
+          <CardTitle className="text-3xl font-bold">Wedding RSVP</CardTitle>
+          <CardDescription className="text-base">Admin Portal</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
+                required
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.875rem',
-              background: loading ? '#95a5a6' : '#3498db',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#2980b9'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#3498db'
-              }
-            }}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Logging in...' : 'Login'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
