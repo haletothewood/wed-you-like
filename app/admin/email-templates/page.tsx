@@ -56,7 +56,7 @@ export default function EmailTemplatesPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <PageHeader
         title="Email Templates"
         description="Manage email templates for invitations and thank you messages"

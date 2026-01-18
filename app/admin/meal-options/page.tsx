@@ -136,7 +136,7 @@ export default function MealOptionsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <PageHeader
         title="Meal Options Management"
         description="Configure menu options for starters, mains, and desserts"

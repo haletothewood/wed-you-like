@@ -204,7 +204,7 @@ export default function InvitesAdmin() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <PageHeader
         title="Invite Management"
         description="Create and manage wedding invitations"
@@ -370,7 +370,8 @@ export default function InvitesAdmin() {
             <CardTitle>All Invites ({invites.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name/Group</TableHead>
@@ -463,6 +464,7 @@ export default function InvitesAdmin() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -51,7 +51,7 @@ export default function Admin() {
   ] as const
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <PageHeader
         title="Dashboard"
         description="Welcome to your wedding RSVP management system"
