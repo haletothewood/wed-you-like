@@ -75,8 +75,8 @@ export default function RSVP() {
 
   // Form state
   const [isAttending, setIsAttending] = useState<boolean | null>(null)
-  const [adultsAttending, setAdultsAttending] = useState(0)
-  const [childrenAttending, setChildrenAttending] = useState(0)
+  const [attendingGuests, setAttendingGuests] = useState<Array<{ guestId: string; name: string; isAdult: boolean }>>([])
+  const [plusOneName, setPlusOneName] = useState('')
   const [dietaryRequirements, setDietaryRequirements] = useState('')
   const [mealSelections, setMealSelections] = useState<Record<string, Record<string, string>>>({})
   const [questionResponses, setQuestionResponses] = useState<Record<string, string>>({})
@@ -95,14 +95,17 @@ export default function RSVP() {
       const data = await response.json()
       setInvite(data.invite)
 
+      // Initialize attending guests list
+      const initialGuests = data.invite.guests.map((g: Guest, index: number) => ({
+        guestId: g.id,
+        name: g.name,
+        isAdult: index < data.invite.adultsCount, // First N guests are adults
+      }))
+      setAttendingGuests(initialGuests)
+
       if (data.invite.hasResponded && data.invite.rsvp) {
         setIsAttending(data.invite.rsvp.isAttending)
-        setAdultsAttending(data.invite.rsvp.adultsAttending)
-        setChildrenAttending(data.invite.rsvp.childrenAttending)
         setDietaryRequirements(data.invite.rsvp.dietaryRequirements || '')
-      } else {
-        setAdultsAttending(data.invite.adultsCount)
-        setChildrenAttending(data.invite.childrenCount)
       }
     } catch {
       setError('Failed to load invite details')
@@ -127,9 +130,18 @@ export default function RSVP() {
       return
     }
 
+    if (isAttending && invite?.plusOneAllowed && plusOneName.trim() && attendingGuests.length === 1) {
+      alert('Please add your plus one before submitting')
+      return
+    }
+
     setSubmitting(true)
 
     try {
+      // Calculate counts from attending guests
+      const adultsCount = isAttending ? attendingGuests.filter(g => g.isAdult).length : 0
+      const childrenCount = isAttending ? attendingGuests.filter(g => !g.isAdult).length : 0
+
       const mealSelectionsArray = isAttending && invite
         ? Object.entries(mealSelections).flatMap(([guestId, courses]) =>
             Object.entries(courses).map(([courseType, mealOptionId]) => ({
@@ -163,8 +175,8 @@ export default function RSVP() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isAttending,
-          adultsAttending: isAttending ? adultsAttending : 0,
-          childrenAttending: isAttending ? childrenAttending : 0,
+          adultsAttending: adultsCount,
+          childrenAttending: childrenCount,
           dietaryRequirements: isAttending ? dietaryRequirements : undefined,
           mealSelections: mealSelectionsArray,
           questionResponses: questionResponsesArray,
@@ -218,6 +230,41 @@ export default function RSVP() {
           : [...current, option],
       }
     })
+  }
+
+  const toggleGuest = (guestId: string) => {
+    setAttendingGuests((prev) => {
+      const isAttending = prev.some(g => g.guestId === guestId)
+      if (isAttending) {
+        return prev.filter(g => g.guestId !== guestId)
+      } else {
+        const guest = invite?.guests.find(g => g.id === guestId)
+        if (guest && invite) {
+          const index = invite.guests.indexOf(guest)
+          return [...prev, {
+            guestId: guest.id,
+            name: guest.name,
+            isAdult: index < invite.adultsCount
+          }]
+        }
+        return prev
+      }
+    })
+  }
+
+  const addPlusOne = () => {
+    if (!plusOneName.trim() || !invite) return
+    const plusOneId = `plus-one-${Date.now()}`
+    setAttendingGuests((prev) => [...prev, {
+      guestId: plusOneId,
+      name: plusOneName,
+      isAdult: true,
+    }])
+    setPlusOneName('')
+  }
+
+  const removePlusOne = () => {
+    setAttendingGuests((prev) => prev.filter(g => !g.guestId.startsWith('plus-one-')))
   }
 
   if (loading) {
@@ -333,45 +380,102 @@ export default function RSVP() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>How many people will be attending?</CardTitle>
+                  <CardTitle>Who will be attending?</CardTitle>
+                  <CardDescription>
+                    {invite.groupName ?
+                      'Select which guests from your group will attend' :
+                      invite.plusOneAllowed ?
+                        'You can bring a plus one' :
+                        'Invitation for one person'}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="adults">Adults (max {invite.adultsCount})</Label>
-                    <Input
-                      id="adults"
-                      type="number"
-                      min="0"
-                      max={invite.adultsCount}
-                      value={adultsAttending}
-                      onChange={(e) => setAdultsAttending(parseInt(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="children">Children (max {invite.childrenCount})</Label>
-                    <Input
-                      id="children"
-                      type="number"
-                      min="0"
-                      max={invite.childrenCount}
-                      value={childrenAttending}
-                      onChange={(e) => setChildrenAttending(parseInt(e.target.value))}
-                      required
-                    />
+                <CardContent className="space-y-4">
+                  {/* Main guest(s) */}
+                  {invite.guests.map((guest) => {
+                    const isSelected = attendingGuests.some(g => g.guestId === guest.id)
+                    return (
+                      <div key={guest.id} className="flex items-center space-x-3">
+                        <Checkbox
+                          id={guest.id}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleGuest(guest.id)}
+                        />
+                        <Label htmlFor={guest.id} className="font-normal cursor-pointer">
+                          {guest.name}
+                        </Label>
+                      </div>
+                    )
+                  })}
+
+                  {/* Plus one section */}
+                  {invite.plusOneAllowed && (
+                    <>
+                      <Separator />
+                      {attendingGuests.some(g => g.guestId.startsWith('plus-one-')) ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="secondary">Plus One</Badge>
+                              <span className="text-sm font-medium">
+                                {attendingGuests.find(g => g.guestId.startsWith('plus-one-'))?.name}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={removePlusOne}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="plusOne">Add Plus One (Optional)</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="plusOne"
+                              type="text"
+                              placeholder="Enter guest name"
+                              value={plusOneName}
+                              onChange={(e) => setPlusOneName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  addPlusOne()
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={addPlusOne}
+                              disabled={!plusOneName.trim()}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="text-sm text-muted-foreground pt-2">
+                    Total attending: {attendingGuests.length} {attendingGuests.length === 1 ? 'guest' : 'guests'}
                   </div>
                 </CardContent>
               </Card>
 
-              {(starters.length > 0 || mains.length > 0 || desserts.length > 0) && (
+              {(starters.length > 0 || mains.length > 0 || desserts.length > 0) && attendingGuests.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Meal Selections</CardTitle>
-                    <CardDescription>Please select meal preferences for each guest</CardDescription>
+                    <CardDescription>Please select meal preferences for each attending guest</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {invite.guests.map((guest) => (
-                      <div key={guest.id} className="space-y-4">
+                    {attendingGuests.map((guest) => (
+                      <div key={guest.guestId} className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">{guest.name}</Badge>
                         </div>
@@ -380,8 +484,8 @@ export default function RSVP() {
                           <div className="space-y-2">
                             <Label>Starter</Label>
                             <Select
-                              value={mealSelections[guest.id]?.STARTER}
-                              onValueChange={(value) => handleMealSelection(guest.id, 'STARTER', value)}
+                              value={mealSelections[guest.guestId]?.STARTER}
+                              onValueChange={(value) => handleMealSelection(guest.guestId, 'STARTER', value)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select starter" />
@@ -401,8 +505,8 @@ export default function RSVP() {
                           <div className="space-y-2">
                             <Label>Main Course</Label>
                             <Select
-                              value={mealSelections[guest.id]?.MAIN}
-                              onValueChange={(value) => handleMealSelection(guest.id, 'MAIN', value)}
+                              value={mealSelections[guest.guestId]?.MAIN}
+                              onValueChange={(value) => handleMealSelection(guest.guestId, 'MAIN', value)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select main" />
@@ -422,8 +526,8 @@ export default function RSVP() {
                           <div className="space-y-2">
                             <Label>Dessert</Label>
                             <Select
-                              value={mealSelections[guest.id]?.DESSERT}
-                              onValueChange={(value) => handleMealSelection(guest.id, 'DESSERT', value)}
+                              value={mealSelections[guest.guestId]?.DESSERT}
+                              onValueChange={(value) => handleMealSelection(guest.guestId, 'DESSERT', value)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select dessert" />
@@ -439,7 +543,7 @@ export default function RSVP() {
                           </div>
                         )}
 
-                        {guest.id !== invite.guests[invite.guests.length - 1].id && (
+                        {guest.guestId !== attendingGuests[attendingGuests.length - 1].guestId && (
                           <Separator />
                         )}
                       </div>
