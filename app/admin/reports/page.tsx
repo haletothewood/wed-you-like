@@ -261,23 +261,23 @@ export default function ReportsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h4 className="font-medium mb-2">Guest List with Meal Selections</h4>
+              <h4 className="font-medium mb-2">Venue Report (Recommended)</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Complete list of all guests with their RSVP status and meal choices
+                Attending guests with table assignments and meal choices, plus meal count totals
               </p>
               <Button
                 onClick={() => handleExport('guests')}
                 disabled={exporting === 'guests'}
                 className="w-full"
               >
-                {exporting === 'guests' ? 'Exporting...' : '📥 Export Guest List'}
+                {exporting === 'guests' ? 'Exporting...' : '📥 Export Venue Report'}
               </Button>
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Meal Counts Summary</h4>
+              <h4 className="font-medium mb-2">Meal Counts Only</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Summary of meal selections by option for catering numbers
+                Just the meal totals by course type (for quick reference)
               </p>
               <Button
                 onClick={() => handleExport('meal-counts')}
