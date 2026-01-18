@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1768668080941,
+      "tag": "0000_update_meal_and_question_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768674425104,
+      "tag": "0001_lucky_valeria_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1768691410874,
+      "tag": "0002_empty_magneto",
+      "breakpoints": true
+    }
+  ]
+}

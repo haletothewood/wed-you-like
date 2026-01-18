@@ -1,0 +1,78 @@
+import { NextResponse } from 'next/server'
+import { DrizzleInviteRepository } from '@/infrastructure/database/repositories/DrizzleInviteRepository'
+import { DrizzleRSVPRepository } from '@/infrastructure/database/repositories/DrizzleRSVPRepository'
+import { DrizzleMealOptionRepository } from '@/infrastructure/database/repositories/DrizzleMealOptionRepository'
+import { DrizzleCustomQuestionRepository } from '@/infrastructure/database/repositories/DrizzleCustomQuestionRepository'
+import { DrizzleMealSelectionRepository } from '@/infrastructure/database/repositories/DrizzleMealSelectionRepository'
+import { DrizzleQuestionResponseRepository } from '@/infrastructure/database/repositories/DrizzleQuestionResponseRepository'
+import { GetInviteByToken } from '@/application/use-cases/GetInviteByToken'
+import { SubmitRSVP } from '@/application/use-cases/SubmitRSVP'
+
+const inviteRepository = new DrizzleInviteRepository()
+const rsvpRepository = new DrizzleRSVPRepository()
+const mealOptionRepository = new DrizzleMealOptionRepository()
+const customQuestionRepository = new DrizzleCustomQuestionRepository()
+const mealSelectionRepository = new DrizzleMealSelectionRepository()
+const questionResponseRepository = new DrizzleQuestionResponseRepository()
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  try {
+    const { token } = await params
+    const getInviteByToken = new GetInviteByToken(
+      inviteRepository,
+      rsvpRepository,
+      mealOptionRepository,
+      customQuestionRepository
+    )
+    const invite = await getInviteByToken.execute(token)
+
+    if (!invite) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ invite })
+  } catch (error) {
+    console.error('Error fetching invite:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch invite' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  try {
+    const { token } = await params
+    const body = await request.json()
+
+    const submitRSVP = new SubmitRSVP(
+      inviteRepository,
+      rsvpRepository,
+      mealSelectionRepository,
+      questionResponseRepository
+    )
+    const result = await submitRSVP.execute({
+      token,
+      isAttending: body.isAttending,
+      adultsAttending: body.adultsAttending,
+      childrenAttending: body.childrenAttending,
+      dietaryRequirements: body.dietaryRequirements,
+      mealSelections: body.mealSelections,
+      questionResponses: body.questionResponses,
+    })
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Error submitting RSVP:', error)
+    const message =
+      error instanceof Error ? error.message : 'Failed to submit RSVP'
+    const status = message === 'Invite not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
+  }
+}
