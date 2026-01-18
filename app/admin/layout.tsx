@@ -35,6 +35,7 @@ export default function AdminLayout({
     { href: '/admin/email-templates' as const, label: 'Email Templates', icon: '📧' },
     { href: '/admin/meal-options' as const, label: 'Meal Options', icon: '🍽️' },
     { href: '/admin/custom-questions' as const, label: 'Questions', icon: '❓' },
+    { href: '/admin/reports' as const, label: 'Reports', icon: '📊' },
   ]
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
