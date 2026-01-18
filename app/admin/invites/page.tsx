@@ -36,6 +36,13 @@ interface Invite {
   guests: Guest[]
   sentAt: string | null
   createdAt: string
+  rsvpStatus: {
+    hasResponded: boolean
+    isAttending: boolean | null
+    adultsAttending: number | null
+    childrenAttending: number | null
+    respondedAt: string | null
+  }
 }
 
 export default function InvitesAdmin() {
@@ -369,7 +376,8 @@ export default function InvitesAdmin() {
                   <TableHead>Name/Group</TableHead>
                   <TableHead>Guests</TableHead>
                   <TableHead>Count</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Email Status</TableHead>
+                  <TableHead>RSVP Response</TableHead>
                   <TableHead>RSVP Link</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -402,6 +410,31 @@ export default function InvitesAdmin() {
                         </Badge>
                       ) : (
                         <Badge variant="secondary">Not Sent</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {invite.rsvpStatus.hasResponded ? (
+                        <div className="space-y-1">
+                          <Badge
+                            className={
+                              invite.rsvpStatus.isAttending
+                                ? 'bg-success text-success-foreground'
+                                : 'bg-destructive text-destructive-foreground'
+                            }
+                          >
+                            {invite.rsvpStatus.isAttending
+                              ? '✓ Attending'
+                              : '✗ Not Attending'}
+                          </Badge>
+                          {invite.rsvpStatus.isAttending && (
+                            <div className="text-xs text-muted-foreground">
+                              {invite.rsvpStatus.adultsAttending}A{' '}
+                              {invite.rsvpStatus.childrenAttending}C
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline">No Response</Badge>
                       )}
                     </TableCell>
                     <TableCell>

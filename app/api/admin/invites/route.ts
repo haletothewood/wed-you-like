@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { DrizzleInviteRepository } from '@/infrastructure/database/repositories/DrizzleInviteRepository'
+import { DrizzleRSVPRepository } from '@/infrastructure/database/repositories/DrizzleRSVPRepository'
 import { CreateIndividualInvite } from '@/application/use-cases/CreateIndividualInvite'
 import { CreateGroupInvite } from '@/application/use-cases/CreateGroupInvite'
 import { GetAllInvites } from '@/application/use-cases/GetAllInvites'
 
 const inviteRepository = new DrizzleInviteRepository()
+const rsvpRepository = new DrizzleRSVPRepository()
 
 export async function GET() {
   try {
-    const getAllInvites = new GetAllInvites(inviteRepository)
+    const getAllInvites = new GetAllInvites(inviteRepository, rsvpRepository)
     const invites = await getAllInvites.execute()
 
     return NextResponse.json({ invites })
