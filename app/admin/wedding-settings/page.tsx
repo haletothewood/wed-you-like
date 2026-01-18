@@ -93,7 +93,7 @@ export default function WeddingSettingsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <PageHeader
         title="Wedding Settings"
         description="Configure your wedding details and venue information"
