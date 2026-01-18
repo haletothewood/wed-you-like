@@ -1,6 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface CustomQuestion {
   id: string
@@ -131,219 +146,164 @@ export default function CustomQuestionsPage() {
   }
 
   if (loading) {
-    return (
-      <div style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-        <p>Loading custom questions...</p>
-      </div>
-    )
+    return <LoadingSpinner text="Loading custom questions..." />
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-      <h1>Custom Questions Management</h1>
+    <div className="p-8">
+      <PageHeader
+        title="Custom Questions Management"
+        description="Add custom questions for guests to answer with their RSVP"
+      />
 
-      <div
-        style={{
-          marginTop: '2rem',
-          padding: '1.5rem',
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          backgroundColor: '#f9f9f9',
-        }}
-      >
-        <h2>Add New Question</h2>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Question Text *
-            </label>
-            <input
-              type="text"
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              required
-              placeholder="e.g., What is your favorite memory with the couple?"
-              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Question Type
-            </label>
-            <select
-              value={questionType}
-              onChange={(e) =>
-                setQuestionType(
-                  e.target.value as 'TEXT' | 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE'
-                )
-              }
-              required
-              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-            >
-              <option value="TEXT">Text (open-ended)</option>
-              <option value="SINGLE_CHOICE">Single Choice</option>
-              <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-            </select>
-          </div>
-
-          {(questionType === 'SINGLE_CHOICE' ||
-            questionType === 'MULTIPLE_CHOICE') && (
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                Options
-              </label>
-              {options.map((option, index) => (
-                <div
-                  key={index}
-                  style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}
-                >
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    placeholder={`Option ${index + 1}`}
-                    style={{ flex: 1, padding: '0.5rem', fontSize: '1rem' }}
-                  />
-                  {options.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveOption(index)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={handleAddOption}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginTop: '0.5rem',
-                }}
-              >
-                Add Option
-              </button>
-            </div>
-          )}
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input
-                type="checkbox"
-                checked={isRequired}
-                onChange={(e) => setIsRequired(e.target.checked)}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Add New Question</CardTitle>
+          <CardDescription>
+            Create text, single choice, or multiple choice questions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="questionText">
+                Question Text <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="questionText"
+                type="text"
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                required
+                placeholder="e.g., What is your favorite memory with the couple?"
               />
-              Required
-            </label>
-          </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              background: submitting ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? 'Adding...' : 'Add Question'}
-          </button>
-        </form>
-      </div>
-
-      <div style={{ marginTop: '2rem' }}>
-        <h2>Current Questions</h2>
-        {questions.length === 0 ? (
-          <p style={{ color: '#666' }}>No custom questions yet</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {questions.map((question) => (
-              <div
-                key={question.id}
-                style={{
-                  padding: '1rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  backgroundColor: 'white',
-                }}
+            <div className="space-y-2">
+              <Label htmlFor="questionType">Question Type</Label>
+              <Select
+                value={questionType}
+                onValueChange={(value) =>
+                  setQuestionType(
+                    value as 'TEXT' | 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE'
+                  )
+                }
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        marginBottom: '0.5rem',
-                      }}
-                    >
-                      <h3 style={{ margin: 0 }}>{question.questionText}</h3>
-                      {question.isRequired && (
-                        <span
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            fontSize: '0.75rem',
-                            background: '#dc3545',
-                            color: 'white',
-                            borderRadius: '4px',
-                          }}
+                <SelectTrigger id="questionType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TEXT">Text (open-ended)</SelectItem>
+                  <SelectItem value="SINGLE_CHOICE">Single Choice</SelectItem>
+                  <SelectItem value="MULTIPLE_CHOICE">
+                    Multiple Choice
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(questionType === 'SINGLE_CHOICE' ||
+              questionType === 'MULTIPLE_CHOICE') && (
+              <div className="space-y-2">
+                <Label>Options</Label>
+                <div className="space-y-2">
+                  {options.map((option, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={option}
+                        onChange={(e) =>
+                          handleOptionChange(index, e.target.value)
+                        }
+                        placeholder={`Option ${index + 1}`}
+                        className="flex-1"
+                      />
+                      {options.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemoveOption(index)}
                         >
-                          Required
-                        </span>
+                          Remove
+                        </Button>
                       )}
                     </div>
-                    <p style={{ margin: '0 0 0.5rem 0', color: '#666', fontSize: '0.9rem' }}>
-                      Type: {questionTypeLabels[question.questionType]}
-                    </p>
-                    {question.options.length > 0 && (
-                      <ul style={{ margin: '0.5rem 0 0 1.5rem', color: '#666' }}>
-                        {question.options.map((option, index) => (
-                          <li key={index}>{option}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDelete(question.id)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.9rem',
-                      background: '#dc3545',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                    }}
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAddOption}
                   >
-                    Delete
-                  </button>
+                    Add Option
+                  </Button>
                 </div>
               </div>
+            )}
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isRequired"
+                checked={isRequired}
+                onCheckedChange={(checked) => setIsRequired(checked as boolean)}
+              />
+              <Label htmlFor="isRequired" className="font-normal cursor-pointer">
+                Required
+              </Label>
+            </div>
+
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Adding...' : 'Add Question'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Current Questions</h2>
+        {questions.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No custom questions yet
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {questions.map((question) => (
+              <Card key={question.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="flex items-center gap-2 flex-wrap">
+                        {question.questionText}
+                        {question.isRequired && (
+                          <Badge variant="destructive" className="text-xs">
+                            Required
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription className="mt-2">
+                        Type: {questionTypeLabels[question.questionType]}
+                      </CardDescription>
+                      {question.options.length > 0 && (
+                        <ul className="mt-2 ml-6 list-disc text-sm text-muted-foreground">
+                          {question.options.map((option, index) => (
+                            <li key={index}>{option}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(question.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </CardHeader>
+              </Card>
             ))}
           </div>
         )}

@@ -1,7 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { EmptyState } from '@/components/EmptyState'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface Guest {
   id: string
@@ -25,9 +42,7 @@ export default function InvitesAdmin() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [inviteType, setInviteType] = useState<'individual' | 'group'>(
-    'individual'
-  )
+  const [inviteType, setInviteType] = useState<'individual' | 'group'>('individual')
   const [sending, setSending] = useState<string | null>(null)
 
   // Individual form state
@@ -39,9 +54,7 @@ export default function InvitesAdmin() {
   const [groupName, setGroupName] = useState('')
   const [adultsCount, setAdultsCount] = useState(2)
   const [childrenCount, setChildrenCount] = useState(0)
-  const [groupGuests, setGroupGuests] = useState<
-    Array<{ name: string; email: string }>
-  >([
+  const [groupGuests, setGroupGuests] = useState<Array<{ name: string; email: string }>>([
     { name: '', email: '' },
     { name: '', email: '' },
   ])
@@ -173,326 +186,253 @@ export default function InvitesAdmin() {
     }
   }
 
+  const updateGroupGuest = (index: number, field: 'name' | 'email', value: string) => {
+    const updated = [...groupGuests]
+    updated[index][field] = value
+    setGroupGuests(updated)
+  }
+
   if (loading) {
-    return <div style={{ padding: '2rem' }}>Loading...</div>
+    return <LoadingSpinner text="Loading invites..." />
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-        }}
-      >
-        <h1>Invite Management</h1>
-        <div>
-          <Link
-            href="/admin"
-            style={{
-              marginRight: '1rem',
-              padding: '0.5rem 1rem',
-              background: '#eee',
-              borderRadius: '4px',
-              textDecoration: 'none',
-              color: 'black',
-            }}
-          >
-            Back to Admin
-          </Link>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
+    <div className="p-8">
+      <PageHeader
+        title="Invite Management"
+        description="Create and manage wedding invitations"
+        action={
+          <Button onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : 'Create Invite'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
       {showForm && (
-        <div
-          style={{
-            padding: '1.5rem',
-            background: '#f9f9f9',
-            borderRadius: '8px',
-            marginBottom: '2rem',
-          }}
-        >
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ marginRight: '1rem' }}>
-              <input
-                type="radio"
-                checked={inviteType === 'individual'}
-                onChange={() => setInviteType('individual')}
-              />
-              Individual
-            </label>
-            <label>
-              <input
-                type="radio"
-                checked={inviteType === 'group'}
-                onChange={() => setInviteType('group')}
-              />
-              Group
-            </label>
-          </div>
-
-          {inviteType === 'individual' ? (
-            <form onSubmit={handleCreateIndividual}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  Guest Name:
-                </label>
-                <input
-                  type="text"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  Email:
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={plusOneAllowed}
-                    onChange={(e) => setPlusOneAllowed(e.target.checked)}
-                  />
-                  Allow Plus One
-                </label>
-              </div>
-              <button
-                type="submit"
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Create New Invite</CardTitle>
+            <CardDescription>
+              Send invitations to individual guests or groups
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex gap-4">
+              <Button
+                variant={inviteType === 'individual' ? 'default' : 'outline'}
+                onClick={() => setInviteType('individual')}
               >
-                Create Individual Invite
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleCreateGroup}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  Group Name:
-                </label>
-                <input
-                  type="text"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                    Adults:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={adultsCount}
-                    onChange={(e) => {
-                      const count = parseInt(e.target.value)
-                      setAdultsCount(count)
-                      updateGroupGuestCount(count, childrenCount)
-                    }}
+                Individual
+              </Button>
+              <Button
+                variant={inviteType === 'group' ? 'default' : 'outline'}
+                onClick={() => setInviteType('group')}
+              >
+                Group
+              </Button>
+            </div>
+
+            <Separator />
+
+            {inviteType === 'individual' ? (
+              <form onSubmit={handleCreateIndividual} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="guestName">
+                    Guest Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="guestName"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
                     required
-                    style={{ width: '100px', padding: '0.5rem' }}
                   />
                 </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                    Children:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={childrenCount}
-                    onChange={(e) => {
-                      const count = parseInt(e.target.value)
-                      setChildrenCount(count)
-                      updateGroupGuestCount(adultsCount, count)
-                    }}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    style={{ width: '100px', padding: '0.5rem' }}
                   />
                 </div>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <h4>Guests:</h4>
-                {groupGuests.map((guest, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      marginBottom: '0.5rem',
-                    }}
-                  >
-                    <input
-                      type="text"
-                      placeholder="Name"
-                      value={guest.name}
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="plusOne"
+                    checked={plusOneAllowed}
+                    onCheckedChange={(checked) => setPlusOneAllowed(checked as boolean)}
+                  />
+                  <Label htmlFor="plusOne" className="font-normal cursor-pointer">
+                    Allow Plus One
+                  </Label>
+                </div>
+
+                <Button type="submit">Create Individual Invite</Button>
+              </form>
+            ) : (
+              <form onSubmit={handleCreateGroup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="groupName">Group Name</Label>
+                  <Input
+                    id="groupName"
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    placeholder="e.g., The Smith Family"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adults">
+                      Adults <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="adults"
+                      type="number"
+                      min="1"
+                      value={adultsCount}
                       onChange={(e) => {
-                        const newGuests = [...groupGuests]
-                        newGuests[index].name = e.target.value
-                        setGroupGuests(newGuests)
+                        const val = parseInt(e.target.value)
+                        setAdultsCount(val)
+                        updateGroupGuestCount(val, childrenCount)
                       }}
                       required
-                      style={{ flex: 1, padding: '0.5rem' }}
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email (optional for children)"
-                      value={guest.email}
-                      onChange={(e) => {
-                        const newGuests = [...groupGuests]
-                        newGuests[index].email = e.target.value
-                        setGroupGuests(newGuests)
-                      }}
-                      style={{ flex: 1, padding: '0.5rem' }}
                     />
                   </div>
-                ))}
-              </div>
-              <button
-                type="submit"
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                Create Group Invite
-              </button>
-            </form>
-          )}
-        </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="children">Children</Label>
+                    <Input
+                      id="children"
+                      type="number"
+                      min="0"
+                      value={childrenCount}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value)
+                        setChildrenCount(val)
+                        updateGroupGuestCount(adultsCount, val)
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <Label>Guest Details</Label>
+                  {groupGuests.map((guest, idx) => (
+                    <div key={idx} className="grid grid-cols-2 gap-4">
+                      <Input
+                        placeholder={`Guest ${idx + 1} Name`}
+                        value={guest.name}
+                        onChange={(e) => updateGroupGuest(idx, 'name', e.target.value)}
+                      />
+                      <Input
+                        type="email"
+                        placeholder={`Guest ${idx + 1} Email`}
+                        value={guest.email}
+                        onChange={(e) => updateGroupGuest(idx, 'email', e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <Button type="submit">Create Group Invite</Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      <div>
-        <h2>Invites ({invites.length})</h2>
-        {invites.length === 0 ? (
-          <p>No invites yet. Create one to get started!</p>
-        ) : (
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              marginTop: '1rem',
-            }}
-          >
-            <thead>
-              <tr style={{ borderBottom: '2px solid #ddd' }}>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Name</th>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Type</th>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Count</th>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Token</th>
-                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invites.map((invite) => (
-                <tr key={invite.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.5rem' }}>
-                    {invite.groupName || invite.guests[0]?.name}
-                    {invite.plusOneAllowed && ' (+1)'}
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    {invite.groupName ? 'Group' : 'Individual'}
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    {invite.adultsCount}A / {invite.childrenCount}C
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    {invite.sentAt ? (
-                      <span style={{ color: '#28a745', fontSize: '0.875rem' }}>
-                        Sent
-                      </span>
-                    ) : (
-                      <span style={{ color: '#6c757d', fontSize: '0.875rem' }}>
-                        Not Sent
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    style={{
-                      padding: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {invite.token}
-                  </td>
-                  <td style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      onClick={() => handleSendEmail(invite.id)}
-                      disabled={sending === invite.id}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        background: sending === invite.id ? '#6c757d' : '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: sending === invite.id ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      {sending === invite.id ? 'Sending...' : 'Send Email'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(invite.id)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {invites.length === 0 ? (
+        <EmptyState
+          title="No invites created yet"
+          description="Click 'Create Invite' to send your first invitation"
+          action={
+            <Button onClick={() => setShowForm(true)}>Create First Invite</Button>
+          }
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>All Invites ({invites.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name/Group</TableHead>
+                  <TableHead>Guests</TableHead>
+                  <TableHead>Count</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>RSVP Link</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invites.map((invite) => (
+                  <TableRow key={invite.id}>
+                    <TableCell className="font-medium">
+                      {invite.groupName || invite.guests[0]?.name || 'Unknown'}
+                      {invite.plusOneAllowed && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          +1
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {invite.guests.map((g) => g.name).join(', ')}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {invite.adultsCount}A {invite.childrenCount}C
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {invite.sentAt ? (
+                        <Badge className="bg-success text-success-foreground">
+                          Sent
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Not Sent</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">
+                        /rsvp/{invite.token}
+                      </code>
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={sending === invite.id}
+                        onClick={() => handleSendEmail(invite.id)}
+                      >
+                        {sending === invite.id ? 'Sending...' : 'Send Email'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(invite.id)}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

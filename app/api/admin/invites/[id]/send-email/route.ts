@@ -19,9 +19,11 @@ export async function POST(
   try {
     const { id } = await params
 
-    const host = request.headers.get('host') || 'localhost:3000'
-    const protocol = request.headers.get('x-forwarded-proto') || 'http'
-    const baseUrl = `${protocol}://${host}`
+    // Use BASE_URL from environment variables for production
+    // Falls back to constructing from headers for development
+    const baseUrl =
+      process.env.BASE_URL ||
+      `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`
 
     const sendInviteEmail = new SendInviteEmail(
       inviteRepository,

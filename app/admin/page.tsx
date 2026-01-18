@@ -1,173 +1,94 @@
 'use client'
 
 import Link from 'next/link'
+import { PageHeader } from '@/components/PageHeader'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function Admin() {
+  const features = [
+    {
+      href: '/admin/invites' as const,
+      icon: '✉️',
+      title: 'Invites',
+      description: 'Create and manage guest invitations with unique RSVP links',
+      enabled: true,
+    },
+    {
+      href: '/admin/meal-options' as const,
+      icon: '🍽️',
+      title: 'Meal Options',
+      description: 'Configure menu options for starters, mains, and desserts',
+      enabled: true,
+    },
+    {
+      href: '/admin/custom-questions' as const,
+      icon: '❓',
+      title: 'Custom Questions',
+      description: 'Add custom questions for guests (text, single choice, multiple choice)',
+      enabled: true,
+    },
+    {
+      href: '/admin/email-templates' as const,
+      icon: '📧',
+      title: 'Email Templates',
+      description: 'Manage and configure email invitation templates',
+      enabled: true,
+    },
+    {
+      href: '/admin/wedding-settings' as const,
+      icon: '⚙️',
+      title: 'Wedding Settings',
+      description: 'Configure your wedding details, date, time, and venue',
+      enabled: true,
+    },
+    {
+      href: '/admin' as const,
+      icon: '🪑',
+      title: 'Table Assignments',
+      description: 'Coming soon: Assign guests to tables',
+      enabled: false,
+    },
+  ] as const
+
   return (
-    <div>
-      <div
-        style={{
-          background: 'white',
-          padding: '2rem',
-          borderRadius: '8px',
-          marginBottom: '2rem',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-        }}
-      >
-        <p style={{ fontSize: '1.125rem', color: '#555', margin: 0 }}>
-          Welcome to your wedding RSVP management system. Use the sidebar to navigate between different sections.
-        </p>
+    <div className="p-8">
+      <PageHeader
+        title="Dashboard"
+        description="Welcome to your wedding RSVP management system"
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((feature) => (
+          feature.enabled ? (
+            <Link key={feature.href} href={feature.href}>
+              <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1 hover:border-primary cursor-pointer">
+                <CardHeader>
+                  <div className="text-4xl mb-3">{feature.icon}</div>
+                  <CardTitle>{feature.title}</CardTitle>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          ) : (
+            <Card key={feature.href} className="h-full opacity-60">
+              <CardHeader>
+                <div className="text-4xl mb-3">{feature.icon}</div>
+                <CardTitle className="text-muted-foreground">{feature.title}</CardTitle>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          )
+        ))}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.5rem',
-        }}
-      >
-        <Link
-          href="/admin/invites"
-          style={{
-            display: 'block',
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: 'inherit',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            border: '1px solid transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-            e.currentTarget.style.borderColor = '#3498db'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-        >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✉️</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>Invites</h3>
-          <p style={{ margin: 0, color: '#7f8c8d', fontSize: '0.9rem' }}>
-            Create and manage guest invitations with unique RSVP links
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/meal-options"
-          style={{
-            display: 'block',
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: 'inherit',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            border: '1px solid transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-            e.currentTarget.style.borderColor = '#3498db'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-        >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🍽️</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>Meal Options</h3>
-          <p style={{ margin: 0, color: '#7f8c8d', fontSize: '0.9rem' }}>
-            Configure menu options for starters, mains, and desserts
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/custom-questions"
-          style={{
-            display: 'block',
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: 'inherit',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            border: '1px solid transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-            e.currentTarget.style.borderColor = '#3498db'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-        >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>❓</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>Custom Questions</h3>
-          <p style={{ margin: 0, color: '#7f8c8d', fontSize: '0.9rem' }}>
-            Add custom questions for guests (text, single choice, multiple choice)
-          </p>
-        </Link>
-
-        <div
-          style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            opacity: 0.6,
-            border: '1px solid #e0e0e0',
-          }}
-        >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📧</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#95a5a6' }}>Email Templates</h3>
-          <p style={{ margin: 0, color: '#95a5a6', fontSize: '0.9rem' }}>
-            Coming soon: Configure and send email invitations
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            opacity: 0.6,
-            border: '1px solid #e0e0e0',
-          }}
-        >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🪑</div>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#95a5a6' }}>Table Assignments</h3>
-          <p style={{ margin: 0, color: '#95a5a6', fontSize: '0.9rem' }}>
-            Coming soon: Assign guests to tables
-          </p>
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: '2rem',
-          background: '#e8f4f8',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          border: '1px solid #b8daec',
-        }}
-      >
-        <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>Quick Stats</h3>
-        <p style={{ margin: 0, color: '#555', fontSize: '0.9rem' }}>
-          View all your invites and RSVPs in the Invites section
-        </p>
-      </div>
+      <Card className="mt-6 bg-muted/50 border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-lg">Quick Stats</CardTitle>
+          <CardDescription>
+            View all your invites and RSVPs in the Invites section
+          </CardDescription>
+        </CardHeader>
+      </Card>
     </div>
   )
 }

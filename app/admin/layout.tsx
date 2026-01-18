@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
 export default function AdminLayout({
   children,
@@ -34,57 +37,33 @@ export default function AdminLayout({
   ]
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui' }}>
+    <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside
-        style={{
-          width: '250px',
-          background: '#2c3e50',
-          color: 'white',
-          padding: '2rem 0',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-        }}
-      >
-        <div style={{ padding: '0 1.5rem', marginBottom: '2rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Wedding Admin</h2>
+      <aside className="w-64 bg-gradient-to-b from-primary/90 to-primary text-primary-foreground sticky top-0 h-screen flex flex-col">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold">Wedding Admin</h2>
         </div>
 
-        <nav>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <Separator className="bg-primary-foreground/20" />
+
+        <nav className="flex-1 py-4">
+          <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '1rem 1.5rem',
-                      color: 'white',
-                      textDecoration: 'none',
-                      background: isActive ? '#34495e' : 'transparent',
-                      borderLeft: isActive ? '4px solid #3498db' : '4px solid transparent',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = '#34495e'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'transparent'
-                      }
-                    }}
+                    className={cn(
+                      'flex items-center gap-3 px-6 py-3 transition-all',
+                      'border-l-4 hover:bg-primary-foreground/10',
+                      isActive
+                        ? 'bg-primary-foreground/20 border-accent font-semibold'
+                        : 'border-transparent'
+                    )}
                   >
-                    <span style={{ fontSize: '1.25rem' }}>{item.icon}</span>
-                    <span style={{ fontWeight: isActive ? 'bold' : 'normal' }}>
-                      {item.label}
-                    </span>
+                    <span className="text-xl">{item.icon}</span>
+                    <span>{item.label}</span>
                   </Link>
                 </li>
               )
@@ -92,65 +71,33 @@ export default function AdminLayout({
           </ul>
         </nav>
 
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '2rem',
-            left: '1.5rem',
-            right: '1.5rem',
-          }}
-        >
-          <button
+        <div className="p-6">
+          <Button
             onClick={handleLogout}
             disabled={loggingOut}
-            style={{
-              width: '100%',
-              padding: '0.875rem',
-              background: loggingOut ? '#95a5a6' : '#e74c3c',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              cursor: loggingOut ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!loggingOut) {
-                e.currentTarget.style.backgroundColor = '#c0392b'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loggingOut) {
-                e.currentTarget.style.backgroundColor = '#e74c3c'
-              }
-            }}
+            variant="destructive"
+            className="w-full"
           >
             {loggingOut ? 'Logging out...' : 'Logout'}
-          </button>
+          </Button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, background: '#ecf0f1' }}>
-        <div
-          style={{
-            background: 'white',
-            borderBottom: '1px solid #ddd',
-            padding: '1.5rem 2rem',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', color: '#2c3e50' }}>
+      <main className="flex-1">
+        <div className="bg-card border-b sticky top-0 z-10 shadow-sm">
+          <div className="flex justify-between items-center px-8 py-6">
+            <h1 className="text-2xl font-bold text-foreground">
               {navItems.find(item => item.href === pathname)?.label || 'Admin'}
             </h1>
-            <div style={{ color: '#7f8c8d', fontSize: '0.875rem' }}>
+            <div className="text-sm text-muted-foreground">
               Wedding RSVP System
             </div>
           </div>
         </div>
-        <div style={{ padding: '2rem' }}>{children}</div>
+        <div className="bg-background min-h-[calc(100vh-5rem)]">
+          {children}
+        </div>
       </main>
     </div>
   )

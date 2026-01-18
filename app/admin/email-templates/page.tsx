@@ -1,6 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { EmptyState } from '@/components/EmptyState'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 interface EmailTemplate {
   id: string
@@ -45,42 +52,71 @@ export default function EmailTemplatesPage() {
   }
 
   if (loading) {
-    return <div className="p-8">Loading...</div>
+    return <LoadingSpinner text="Loading email templates..." />
   }
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Email Templates</h1>
+      <PageHeader
+        title="Email Templates"
+        description="Manage email templates for invitations and thank you messages"
+      />
 
-      <div className="space-y-4">
-        {templates.map((template) => (
-          <div key={template.id} className="border p-4 rounded">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold">{template.name}</h3>
-                <p className="text-sm text-gray-600">
-                  Type: {template.templateType} | Active: {template.isActive ? 'Yes' : 'No'}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Subject: {template.subject}
-                </p>
-              </div>
-              <button
-                onClick={() => handleDelete(template.id)}
-                className="text-red-600 hover:text-red-800"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 p-4 bg-gray-100 rounded">
-        <p className="text-sm text-gray-600">
-          Tip: Use seed scripts to create default templates, or add create/edit UI here.
-        </p>
-      </div>
+      {templates.length === 0 ? (
+        <EmptyState
+          title="No email templates found"
+          description="Use seed scripts to create default templates, or add create functionality."
+        />
+      ) : (
+        <div className="space-y-4">
+          {templates.map((template) => (
+            <Card key={template.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>{template.name}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline">
+                        {template.templateType === 'invite' ? 'Invitation' : 'Thank You'}
+                      </Badge>
+                      <Badge variant={template.isActive ? 'default' : 'secondary'}>
+                        {template.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleDelete(template.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-4">
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium">Subject:</span>{' '}
+                    <span className="text-muted-foreground">{template.subject}</span>
+                  </div>
+                  {template.heroImageUrl && (
+                    <div>
+                      <span className="font-medium">Hero Image:</span>{' '}
+                      <span className="text-muted-foreground truncate">{template.heroImageUrl}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-medium">Last Updated:</span>{' '}
+                    <span className="text-muted-foreground">
+                      {new Date(template.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

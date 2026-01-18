@@ -1,18 +1,88 @@
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Pastel Color Palette */
+    --background: 0 0% 99%; /* Almost white background */
+    --foreground: 0 0% 20%; /* Dark text for readability */
+
+    --card: 0 0% 100%; /* Pure white for cards */
+    --card-foreground: 0 0% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    --primary: 0 100% 84%; /* Pastel Pink #FFADAD */
+    --primary-foreground: 0 0% 20%;
+
+    --secondary: 33 100% 82%; /* Pastel Peach #FFD6A5 */
+    --secondary-foreground: 33 30% 20%;
+
+    --accent: 62 100% 86%; /* Pastel Yellow #FDFFB6 */
+    --accent-foreground: 62 30% 20%;
+
+    --muted: 110 50% 95%; /* Very light pastel green */
+    --muted-foreground: 110 20% 40%;
+
+    --success: 110 100% 87%; /* Pastel Green #CAFFBF */
+    --success-foreground: 110 30% 20%;
+
+    --destructive: 0 85% 70%; /* Slightly deeper coral for destructive actions */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 100% 84%;
+
+    --radius: 0.5rem;
+
+    /* Additional pastel colors for specific use cases */
+    --info: 200 85% 85%; /* Pastel blue for info */
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 100% 84%;
+    --primary-foreground: 0 0% 20%;
+
+    --secondary: 33 100% 82%;
+    --secondary-foreground: 33 30% 20%;
+
+    --accent: 62 100% 86%;
+    --accent-foreground: 62 30% 20%;
+
+    --muted: 110 20% 20%;
+    --muted-foreground: 110 20% 80%;
+
+    --success: 110 100% 87%;
+    --success-foreground: 110 30% 20%;
+
+    --destructive: 0 85% 70%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 100% 84%;
+  }
 }
 
-html,
-body {
-  max-width: 100vw;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  background: #ecf0f1;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
 }
