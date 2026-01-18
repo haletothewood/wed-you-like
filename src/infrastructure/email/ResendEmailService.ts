@@ -14,7 +14,7 @@ export class ResendEmailService implements EmailService {
   async sendEmail(request: EmailSendRequest): Promise<void> {
     try {
       const result = await this.resend.emails.send({
-        from: 'Wedding RSVP <onboarding@resend.dev>',
+        from: 'Wedding Couple <rsvp@yourdomain.com>',
         to: request.to,
         subject: request.subject,
         html: request.html,
