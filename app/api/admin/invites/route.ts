@@ -4,6 +4,7 @@ import { DrizzleRSVPRepository } from '@/infrastructure/database/repositories/Dr
 import { CreateIndividualInvite } from '@/application/use-cases/CreateIndividualInvite'
 import { CreateGroupInvite } from '@/application/use-cases/CreateGroupInvite'
 import { GetAllInvites } from '@/application/use-cases/GetAllInvites'
+import { createInviteSchema } from '@/application/validation/schemas'
 
 const inviteRepository = new DrizzleInviteRepository()
 const rsvpRepository = new DrizzleRSVPRepository()
@@ -27,30 +28,30 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Validate request type
-    if (!body.type || !['individual', 'group'].includes(body.type)) {
-      return NextResponse.json(
-        { error: 'Invalid or missing invite type' },
-        { status: 400 }
-      )
+    const validation = createInviteSchema.safeParse(body)
+    if (!validation.success) {
+      const errors = validation.error.errors.map((e) => e.message).join(', ')
+      return NextResponse.json({ error: errors }, { status: 400 })
     }
 
-    if (body.type === 'individual') {
+    const data = validation.data
+
+    if (data.type === 'individual') {
       const createInvite = new CreateIndividualInvite(inviteRepository)
       const result = await createInvite.execute({
-        guestName: body.guestName,
-        email: body.email,
-        plusOneAllowed: body.plusOneAllowed,
+        guestName: data.guestName,
+        email: data.email,
+        plusOneAllowed: data.plusOneAllowed,
       })
 
       return NextResponse.json(result, { status: 201 })
     } else {
       const createGroupInvite = new CreateGroupInvite(inviteRepository)
       const result = await createGroupInvite.execute({
-        groupName: body.groupName,
-        adultsCount: body.adultsCount,
-        childrenCount: body.childrenCount,
-        guests: body.guests,
+        groupName: data.groupName,
+        adultsCount: data.adultsCount,
+        childrenCount: data.childrenCount,
+        guests: data.guests,
       })
 
       return NextResponse.json(result, { status: 201 })
