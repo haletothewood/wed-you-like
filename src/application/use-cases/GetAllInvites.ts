@@ -31,15 +31,13 @@ export class GetAllInvites {
   async execute(): Promise<InviteDTO[]> {
     const invites = await this.inviteRepository.findAll()
 
-    // Fetch all RSVPs for these invites
-    const dtos = await Promise.all(
-      invites.map(async (invite) => {
-        const rsvp = await this.rsvpRepository.findByInviteId(invite.id)
-        return this.toDTO(invite, rsvp)
-      })
-    )
+    const inviteIds = invites.map((invite) => invite.id)
+    const rsvpMap = await this.rsvpRepository.findByInviteIds(inviteIds)
 
-    return dtos
+    return invites.map((invite) => {
+      const rsvp = rsvpMap.get(invite.id) ?? null
+      return this.toDTO(invite, rsvp)
+    })
   }
 
   private toDTO(invite: Invite, rsvp: RSVP | null): InviteDTO {

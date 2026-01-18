@@ -7,6 +7,7 @@ import { DrizzleMealSelectionRepository } from '@/infrastructure/database/reposi
 import { DrizzleQuestionResponseRepository } from '@/infrastructure/database/repositories/DrizzleQuestionResponseRepository'
 import { GetInviteByToken } from '@/application/use-cases/GetInviteByToken'
 import { SubmitRSVP } from '@/application/use-cases/SubmitRSVP'
+import { submitRsvpSchema } from '@/application/validation/schemas'
 
 const inviteRepository = new DrizzleInviteRepository()
 const rsvpRepository = new DrizzleRSVPRepository()
@@ -51,6 +52,14 @@ export async function POST(
     const { token } = await params
     const body = await request.json()
 
+    const validation = submitRsvpSchema.safeParse(body)
+    if (!validation.success) {
+      const errors = validation.error.errors.map((e) => e.message).join(', ')
+      return NextResponse.json({ error: errors }, { status: 400 })
+    }
+
+    const data = validation.data
+
     const submitRSVP = new SubmitRSVP(
       inviteRepository,
       rsvpRepository,
@@ -59,12 +68,12 @@ export async function POST(
     )
     const result = await submitRSVP.execute({
       token,
-      isAttending: body.isAttending,
-      adultsAttending: body.adultsAttending,
-      childrenAttending: body.childrenAttending,
-      dietaryRequirements: body.dietaryRequirements,
-      mealSelections: body.mealSelections,
-      questionResponses: body.questionResponses,
+      isAttending: data.isAttending,
+      adultsAttending: data.adultsAttending,
+      childrenAttending: data.childrenAttending,
+      dietaryRequirements: data.dietaryRequirements,
+      mealSelections: data.mealSelections,
+      questionResponses: data.questionResponses,
     })
 
     return NextResponse.json(result)

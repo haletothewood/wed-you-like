@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { RSVPRepository } from '@/domain/repositories/RSVPRepository'
 import { RSVP } from '@/domain/entities/RSVP'
 import { db } from '../connection'
@@ -41,6 +41,23 @@ export class DrizzleRSVPRepository implements RSVPRepository {
     }
 
     return this.toDomain(record)
+  }
+
+  async findByInviteIds(inviteIds: string[]): Promise<Map<string, RSVP>> {
+    if (inviteIds.length === 0) {
+      return new Map()
+    }
+
+    const records = await db.query.rsvps.findMany({
+      where: inArray(rsvps.inviteId, inviteIds),
+    })
+
+    const result = new Map<string, RSVP>()
+    for (const record of records) {
+      result.set(record.inviteId, this.toDomain(record))
+    }
+
+    return result
   }
 
   async findById(id: string): Promise<RSVP | null> {
