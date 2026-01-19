@@ -1,0 +1,1 @@
+ALTER TABLE `guests` ADD `is_plus_one` integer DEFAULT false NOT NULL;

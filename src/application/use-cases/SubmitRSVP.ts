@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid'
 import { RSVP } from '@/domain/entities/RSVP'
 import { MealSelection } from '@/domain/entities/MealSelection'
 import { QuestionResponse } from '@/domain/entities/QuestionResponse'
@@ -5,6 +6,7 @@ import type { InviteRepository } from '@/domain/repositories/InviteRepository'
 import type { RSVPRepository } from '@/domain/repositories/RSVPRepository'
 import type { MealSelectionRepository } from '@/domain/repositories/MealSelectionRepository'
 import type { QuestionResponseRepository } from '@/domain/repositories/QuestionResponseRepository'
+import type { GuestRepository } from '@/domain/repositories/GuestRepository'
 import type { CourseType } from '@/domain/entities/MealOption'
 
 export interface MealSelectionInput {
@@ -24,6 +26,7 @@ export interface SubmitRSVPRequest {
   adultsAttending: number
   childrenAttending: number
   dietaryRequirements?: string
+  plusOneName?: string
   mealSelections?: MealSelectionInput[]
   questionResponses?: QuestionResponseInput[]
 }
@@ -31,6 +34,7 @@ export interface SubmitRSVPRequest {
 export interface SubmitRSVPResponse {
   success: boolean
   rsvpId: string
+  plusOneGuestId?: string
 }
 
 export class SubmitRSVP {
@@ -38,21 +42,26 @@ export class SubmitRSVP {
     private inviteRepository: InviteRepository,
     private rsvpRepository: RSVPRepository,
     private mealSelectionRepository: MealSelectionRepository,
-    private questionResponseRepository: QuestionResponseRepository
+    private questionResponseRepository: QuestionResponseRepository,
+    private guestRepository?: GuestRepository
   ) {}
 
   async execute(request: SubmitRSVPRequest): Promise<SubmitRSVPResponse> {
-    // Find the invite by token
     const invite = await this.inviteRepository.findByToken(request.token)
 
     if (!invite) {
       throw new Error('Invite not found')
     }
 
-    // Validate attendee counts against invite
-    const totalRequested =
-      request.adultsAttending + request.childrenAttending
-    const totalAllowed = invite.adultsCount + invite.childrenCount
+    const hasPlusOne = !!request.plusOneName?.trim()
+
+    if (hasPlusOne && !invite.plusOneAllowed) {
+      throw new Error('Plus one is not allowed for this invite')
+    }
+
+    const baseAllowed = invite.adultsCount + invite.childrenCount
+    const totalAllowed = invite.plusOneAllowed ? baseAllowed + 1 : baseAllowed
+    const totalRequested = request.adultsAttending + request.childrenAttending
 
     if (request.isAttending && totalRequested > totalAllowed) {
       throw new Error(
@@ -60,13 +69,38 @@ export class SubmitRSVP {
       )
     }
 
-    // Check if RSVP already exists
+    let plusOneGuestId: string | undefined
+
+    if (this.guestRepository) {
+      const existingPlusOne = await this.guestRepository.findPlusOneByInviteId(invite.id)
+
+      if (hasPlusOne && request.isAttending) {
+        if (existingPlusOne) {
+          existingPlusOne.name = request.plusOneName!.trim()
+          await this.guestRepository.save(existingPlusOne)
+          plusOneGuestId = existingPlusOne.id
+        } else {
+          const newPlusOne = {
+            id: nanoid(),
+            name: request.plusOneName!.trim(),
+            email: '',
+            inviteId: invite.id,
+            isPlusOne: true,
+          }
+          const saved = await this.guestRepository.save(newPlusOne)
+          plusOneGuestId = saved.id
+        }
+      } else if (existingPlusOne) {
+        await this.mealSelectionRepository.deleteByGuestId(existingPlusOne.id)
+        await this.guestRepository.delete(existingPlusOne.id)
+      }
+    }
+
     const existingRSVP = await this.rsvpRepository.findByInviteId(invite.id)
 
     let rsvpId: string
 
     if (existingRSVP) {
-      // Update existing RSVP
       existingRSVP.updateAttendance({
         isAttending: request.isAttending,
         adultsAttending: request.adultsAttending,
@@ -77,7 +111,6 @@ export class SubmitRSVP {
       await this.rsvpRepository.save(existingRSVP)
       rsvpId = existingRSVP.id
     } else {
-      // Create new RSVP
       const rsvp = RSVP.create({
         inviteId: invite.id,
         isAttending: request.isAttending,
@@ -90,31 +123,31 @@ export class SubmitRSVP {
       rsvpId = rsvp.id
     }
 
-    // Handle meal selections (only if attending)
     if (request.isAttending && request.mealSelections) {
-      // Delete existing meal selections for all guests
       for (const guest of invite.guests) {
         await this.mealSelectionRepository.deleteByGuestId(guest.id)
       }
+      if (plusOneGuestId) {
+        await this.mealSelectionRepository.deleteByGuestId(plusOneGuestId)
+      }
 
-      // Create new meal selections
-      const mealSelections = request.mealSelections.map((selection) =>
-        MealSelection.create({
-          guestId: selection.guestId,
+      const mealSelections = request.mealSelections.map((selection) => {
+        const guestId = selection.guestId === 'PLUS_ONE' && plusOneGuestId
+          ? plusOneGuestId
+          : selection.guestId
+        return MealSelection.create({
+          guestId,
           mealOptionId: selection.mealOptionId,
           courseType: selection.courseType,
         })
-      )
+      })
 
       await this.mealSelectionRepository.saveMany(mealSelections)
     }
 
-    // Handle question responses (only if attending)
     if (request.isAttending && request.questionResponses) {
-      // Delete existing question responses
       await this.questionResponseRepository.deleteByRSVPId(rsvpId)
 
-      // Create new question responses
       const questionResponses = request.questionResponses
         .filter((response) => response.responseText.trim() !== '')
         .map((response) =>
@@ -131,6 +164,7 @@ export class SubmitRSVP {
     return {
       success: true,
       rsvpId,
+      plusOneGuestId,
     }
   }
 }
