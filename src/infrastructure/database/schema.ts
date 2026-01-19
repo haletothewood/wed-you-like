@@ -8,6 +8,7 @@ export const guests = sqliteTable('guests', {
   inviteId: text('invite_id')
     .notNull()
     .references(() => invites.id, { onDelete: 'cascade' }),
+  isPlusOne: integer('is_plus_one', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

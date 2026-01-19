@@ -170,6 +170,8 @@ export default function RSVP() {
             .filter((r) => r.responseText.trim() !== '')
         : undefined
 
+      const plusOneGuest = attendingGuests.find(g => g.guestId === 'PLUS_ONE')
+
       const response = await fetch(`/api/rsvp/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,6 +180,7 @@ export default function RSVP() {
           adultsAttending: adultsCount,
           childrenAttending: childrenCount,
           dietaryRequirements: isAttending ? dietaryRequirements : undefined,
+          plusOneName: plusOneGuest?.name,
           mealSelections: mealSelectionsArray,
           questionResponses: questionResponsesArray,
         }),
@@ -254,9 +257,8 @@ export default function RSVP() {
 
   const addPlusOne = () => {
     if (!plusOneName.trim() || !invite) return
-    const plusOneId = `plus-one-${Date.now()}`
     setAttendingGuests((prev) => [...prev, {
-      guestId: plusOneId,
+      guestId: 'PLUS_ONE',
       name: plusOneName,
       isAdult: true,
     }])
@@ -264,7 +266,12 @@ export default function RSVP() {
   }
 
   const removePlusOne = () => {
-    setAttendingGuests((prev) => prev.filter(g => !g.guestId.startsWith('plus-one-')))
+    setAttendingGuests((prev) => prev.filter(g => g.guestId !== 'PLUS_ONE'))
+    setMealSelections((prev) => {
+      const updated = { ...prev }
+      delete updated['PLUS_ONE']
+      return updated
+    })
   }
 
   if (loading) {
@@ -411,13 +418,13 @@ export default function RSVP() {
                   {invite.plusOneAllowed && (
                     <>
                       <Separator />
-                      {attendingGuests.some(g => g.guestId.startsWith('plus-one-')) ? (
+                      {attendingGuests.some(g => g.guestId === 'PLUS_ONE') ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <Badge variant="secondary">Plus One</Badge>
                               <span className="text-sm font-medium">
-                                {attendingGuests.find(g => g.guestId.startsWith('plus-one-'))?.name}
+                                {attendingGuests.find(g => g.guestId === 'PLUS_ONE')?.name}
                               </span>
                             </div>
                             <Button

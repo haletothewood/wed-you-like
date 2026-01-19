@@ -12,6 +12,15 @@ CLAUDE.md
 .env.local
 .env.*.local
 
+# Terraform
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+infrastructure/terraform.tfstate
+infrastructure/terraform.tfstate.backup
+infrastructure/terraform.tfvars
+*.tfvars
+!*.tfvars.example
+
 # Dependencies
 node_modules/
 
@@ -24,6 +33,7 @@ out/
 # Database
 *.db
 *.db-journal
+data/
 
 # Logs
 logs/

@@ -5,6 +5,7 @@ import { DrizzleMealOptionRepository } from '@/infrastructure/database/repositor
 import { DrizzleCustomQuestionRepository } from '@/infrastructure/database/repositories/DrizzleCustomQuestionRepository'
 import { DrizzleMealSelectionRepository } from '@/infrastructure/database/repositories/DrizzleMealSelectionRepository'
 import { DrizzleQuestionResponseRepository } from '@/infrastructure/database/repositories/DrizzleQuestionResponseRepository'
+import { DrizzleGuestRepository } from '@/infrastructure/database/repositories/DrizzleGuestRepository'
 import { GetInviteByToken } from '@/application/use-cases/GetInviteByToken'
 import { SubmitRSVP } from '@/application/use-cases/SubmitRSVP'
 import { submitRsvpSchema } from '@/application/validation/schemas'
@@ -15,6 +16,7 @@ const mealOptionRepository = new DrizzleMealOptionRepository()
 const customQuestionRepository = new DrizzleCustomQuestionRepository()
 const mealSelectionRepository = new DrizzleMealSelectionRepository()
 const questionResponseRepository = new DrizzleQuestionResponseRepository()
+const guestRepository = new DrizzleGuestRepository()
 
 export async function GET(
   _request: Request,
@@ -64,7 +66,8 @@ export async function POST(
       inviteRepository,
       rsvpRepository,
       mealSelectionRepository,
-      questionResponseRepository
+      questionResponseRepository,
+      guestRepository
     )
     const result = await submitRSVP.execute({
       token,
@@ -72,6 +75,7 @@ export async function POST(
       adultsAttending: data.adultsAttending,
       childrenAttending: data.childrenAttending,
       dietaryRequirements: data.dietaryRequirements,
+      plusOneName: data.plusOneName,
       mealSelections: data.mealSelections,
       questionResponses: data.questionResponses,
     })
