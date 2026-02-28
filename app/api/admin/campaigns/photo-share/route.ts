@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server'
 import { DrizzleInviteRepository } from '@/infrastructure/database/repositories/DrizzleInviteRepository'
 import { DrizzleWeddingSettingsRepository } from '@/infrastructure/database/repositories/DrizzleWeddingSettingsRepository'
 import { ResendEmailService } from '@/infrastructure/email/ResendEmailService'
+import { DrizzleEmailCampaignEventRepository } from '@/infrastructure/database/repositories/DrizzleEmailCampaignEventRepository'
 
 const inviteRepository = new DrizzleInviteRepository()
 const weddingSettingsRepository = new DrizzleWeddingSettingsRepository()
+const emailCampaignEventRepository = new DrizzleEmailCampaignEventRepository()
 const emailService = new ResendEmailService(process.env.RESEND_API_KEY || '')
 
 interface PhotoShareCampaignResponse {
@@ -75,11 +77,33 @@ export async function POST(request: Request) {
           subject,
           html,
         })
+
+        await emailCampaignEventRepository.logEvent({
+          eventType: 'photo_share_send',
+          status: 'sent',
+          inviteId: invite.id,
+          recipientEmail: primaryGuest.email,
+          subject,
+        })
+
         result.sent++
       } catch (error) {
         result.failed++
         const message = error instanceof Error ? error.message : 'Unknown error'
         result.errors.push(`Failed for ${primaryGuest.email}: ${message}`)
+
+        try {
+          await emailCampaignEventRepository.logEvent({
+            eventType: 'photo_share_send',
+            status: 'failed',
+            inviteId: invite.id,
+            recipientEmail: primaryGuest.email,
+            subject,
+            errorMessage: message,
+          })
+        } catch (loggingError) {
+          console.error('Failed to log photo share send failure:', loggingError)
+        }
       }
     }
 
