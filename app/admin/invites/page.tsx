@@ -24,6 +24,10 @@ interface Guest {
   id: string
   name: string
   email: string
+  isPlusOne: boolean
+  isChild: boolean
+  parentGuestId?: string
+  isInviteLead: boolean
 }
 
 interface Invite {
@@ -59,11 +63,18 @@ export default function InvitesAdmin() {
 
   // Group form state
   const [groupName, setGroupName] = useState('')
-  const [adultsCount, setAdultsCount] = useState(2)
-  const [childrenCount, setChildrenCount] = useState(0)
-  const [groupGuests, setGroupGuests] = useState<Array<{ name: string; email: string }>>([
-    { name: '', email: '' },
-    { name: '', email: '' },
+  const [groupGuests, setGroupGuests] = useState<
+    Array<{
+      id: string
+      name: string
+      email: string
+      isChild: boolean
+      parentGuestId?: string
+      isInviteLead: boolean
+    }>
+  >([
+    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
+    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
   ])
 
   useEffect(() => {
@@ -118,19 +129,15 @@ export default function InvitesAdmin() {
         body: JSON.stringify({
           type: 'group',
           groupName,
-          adultsCount,
-          childrenCount,
           guests: groupGuests,
         }),
       })
 
       if (response.ok) {
         setGroupName('')
-        setAdultsCount(2)
-        setChildrenCount(0)
         setGroupGuests([
-          { name: '', email: '' },
-          { name: '', email: '' },
+          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
+          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
         ])
         setShowForm(false)
         fetchInvites()
@@ -179,24 +186,85 @@ export default function InvitesAdmin() {
     }
   }
 
-  const updateGroupGuestCount = (newAdults: number, newChildren: number) => {
-    const totalCount = newAdults + newChildren
-    const currentCount = groupGuests.length
-
-    if (totalCount > currentCount) {
-      const newGuests = Array(totalCount - currentCount)
-        .fill(null)
-        .map(() => ({ name: '', email: '' }))
-      setGroupGuests([...groupGuests, ...newGuests])
-    } else if (totalCount < currentCount) {
-      setGroupGuests(groupGuests.slice(0, totalCount))
+  const updateGroupGuest = (
+    index: number,
+    field: 'name' | 'email' | 'parentGuestId',
+    value: string
+  ) => {
+    const updated = [...groupGuests]
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
     }
+    setGroupGuests(updated)
   }
 
-  const updateGroupGuest = (index: number, field: 'name' | 'email', value: string) => {
-    const updated = [...groupGuests]
-    updated[index][field] = value
-    setGroupGuests(updated)
+  const addAdultGuest = () => {
+    setGroupGuests((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        email: '',
+        isChild: false,
+        isInviteLead: prev.every((g) => !g.isInviteLead),
+      },
+    ])
+  }
+
+  const addChildGuest = () => {
+    const eligibleParents = groupGuests.filter((g) => !g.isChild && !g.isInviteLead)
+    setGroupGuests((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        email: '',
+        isChild: true,
+        parentGuestId: eligibleParents[0]?.id,
+        isInviteLead: false,
+      },
+    ])
+  }
+
+  const removeGroupGuest = (id: string) => {
+    setGroupGuests((prev) => {
+      const filtered = prev.filter((g) => g.id !== id && g.parentGuestId !== id)
+      if (!filtered.some((g) => g.isInviteLead)) {
+        const firstAdultIdx = filtered.findIndex((g) => !g.isChild)
+        if (firstAdultIdx >= 0) {
+          filtered[firstAdultIdx] = { ...filtered[firstAdultIdx], isInviteLead: true }
+        }
+      }
+      return filtered
+    })
+  }
+
+  const toggleGuestType = (id: string, isChild: boolean) => {
+    setGroupGuests((prev) => {
+      const eligibleParents = prev.filter((g) => g.id !== id && !g.isChild && !g.isInviteLead)
+      return prev.map((guest) => {
+        if (guest.id !== id) {
+          return guest.parentGuestId === id ? { ...guest, parentGuestId: undefined } : guest
+        }
+
+        return {
+          ...guest,
+          isChild,
+          parentGuestId: isChild ? guest.parentGuestId || eligibleParents[0]?.id : undefined,
+          isInviteLead: isChild ? false : guest.isInviteLead,
+        }
+      })
+    })
+  }
+
+  const setInviteLead = (id: string) => {
+    setGroupGuests((prev) =>
+      prev.map((guest) => {
+        if (guest.isChild) return { ...guest, isInviteLead: false }
+        return { ...guest, isInviteLead: guest.id === id }
+      })
+    )
   }
 
   if (loading) {
@@ -284,67 +352,115 @@ export default function InvitesAdmin() {
             ) : (
               <form onSubmit={handleCreateGroup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="groupName">Group Name</Label>
+                  <Label htmlFor="groupName">
+                    Group Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="groupName"
                     value={groupName}
                     onChange={(e) => setGroupName(e.target.value)}
                     placeholder="e.g., The Smith Family"
+                    required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="adults">
-                      Adults <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="adults"
-                      type="number"
-                      min="1"
-                      value={adultsCount}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value)
-                        setAdultsCount(val)
-                        updateGroupGuestCount(val, childrenCount)
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="children">Children</Label>
-                    <Input
-                      id="children"
-                      type="number"
-                      min="0"
-                      value={childrenCount}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value)
-                        setChildrenCount(val)
-                        updateGroupGuestCount(adultsCount, val)
-                      }}
-                    />
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={addAdultGuest}>
+                    Add Adult
+                  </Button>
+                  <Button type="button" variant="outline" onClick={addChildGuest}>
+                    Add Child
+                  </Button>
                 </div>
 
                 <Separator />
 
                 <div className="space-y-4">
                   <Label>Guest Details</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Children must be linked to an adult who is not the invite lead.
+                  </p>
                   {groupGuests.map((guest, idx) => (
-                    <div key={idx} className="grid grid-cols-2 gap-4">
-                      <Input
-                        placeholder={`Guest ${idx + 1} Name`}
-                        value={guest.name}
-                        onChange={(e) => updateGroupGuest(idx, 'name', e.target.value)}
-                      />
-                      <Input
-                        type="email"
-                        placeholder={`Guest ${idx + 1} Email`}
-                        value={guest.email}
-                        onChange={(e) => updateGroupGuest(idx, 'email', e.target.value)}
-                      />
+                    <div key={guest.id} className="rounded-md border p-3 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={guest.isChild ? 'secondary' : 'outline'}>
+                          {guest.isChild ? 'Child' : 'Adult'}
+                        </Badge>
+                        {!guest.isChild && guest.isInviteLead && (
+                          <Badge>Invite Lead</Badge>
+                        )}
+                        <Button
+                          type="button"
+                          variant={guest.isChild ? 'outline' : 'secondary'}
+                          size="sm"
+                          onClick={() => toggleGuestType(guest.id, true)}
+                        >
+                          Set Child
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!guest.isChild ? 'outline' : 'secondary'}
+                          size="sm"
+                          onClick={() => toggleGuestType(guest.id, false)}
+                        >
+                          Set Adult
+                        </Button>
+                        {!guest.isChild && (
+                          <Button
+                            type="button"
+                            variant={guest.isInviteLead ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setInviteLead(guest.id)}
+                          >
+                            Mark Invite Lead
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeGroupGuest(guest.id)}
+                          disabled={groupGuests.length <= 2}
+                          className="ml-auto"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input
+                          placeholder={`Guest ${idx + 1} Name`}
+                          value={guest.name}
+                          onChange={(e) => updateGroupGuest(idx, 'name', e.target.value)}
+                          required
+                        />
+                        <Input
+                          type="email"
+                          placeholder={`Guest ${idx + 1} Email`}
+                          value={guest.email}
+                          onChange={(e) => updateGroupGuest(idx, 'email', e.target.value)}
+                        />
+                      </div>
+
+                      {guest.isChild && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Parent Guest</Label>
+                          <select
+                            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                            value={guest.parentGuestId || ''}
+                            onChange={(e) => updateGroupGuest(idx, 'parentGuestId', e.target.value)}
+                          >
+                            <option value="">Select parent</option>
+                            {groupGuests
+                              .filter((g) => !g.isChild && !g.isInviteLead && g.id !== guest.id)
+                              .map((parent) => (
+                                <option key={parent.id} value={parent.id}>
+                                  {parent.name || 'Unnamed adult'}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -395,8 +511,19 @@ export default function InvitesAdmin() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {invite.guests.map((g) => g.name).join(', ')}
+                      <div className="text-sm space-y-1">
+                        {invite.guests.map((g) => (
+                          <div key={g.id} className="flex items-center gap-2">
+                            <span>{g.name}</span>
+                            {g.isChild && <Badge variant="secondary" className="text-[10px]">Child</Badge>}
+                            {!g.isChild && g.isInviteLead && (
+                              <Badge variant="outline" className="text-[10px]">Lead</Badge>
+                            )}
+                            {g.isPlusOne && (
+                              <Badge variant="secondary" className="text-[10px]">Plus-one</Badge>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </TableCell>
                     <TableCell>

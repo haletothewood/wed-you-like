@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
 import { relations, sql } from 'drizzle-orm'
 
 export const guests = sqliteTable('guests', {
@@ -9,6 +9,11 @@ export const guests = sqliteTable('guests', {
     .notNull()
     .references(() => invites.id, { onDelete: 'cascade' }),
   isPlusOne: integer('is_plus_one', { mode: 'boolean' }).notNull().default(false),
+  isChild: integer('is_child', { mode: 'boolean' }).notNull().default(false),
+  parentGuestId: text('parent_guest_id').references((): AnySQLiteColumn => guests.id, {
+    onDelete: 'set null',
+  }),
+  isInviteLead: integer('is_invite_lead', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
