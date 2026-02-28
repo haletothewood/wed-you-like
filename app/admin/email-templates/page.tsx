@@ -31,6 +31,19 @@ interface EmailTemplate {
   updatedAt: string
 }
 
+type EditorMode = 'guided' | 'raw'
+
+interface GuidedTemplateFields {
+  heroTitle: string
+  greetingLine: string
+  introLine: string
+  detailsHeading: string
+  ctaLabel: string
+  ctaHelpLine: string
+  closingLine: string
+  signoffLine: string
+}
+
 const templateVariables: Array<{
   key: string
   description: string
@@ -69,6 +82,62 @@ const samplePreviewValues: Record<string, string | number> = {
   children_count: 0,
 }
 
+const defaultGuidedFields: GuidedTemplateFields = {
+  heroTitle: "You're Invited!",
+  greetingLine: 'Dear {{guest_name}},',
+  introLine: "We're so excited to invite you to celebrate our wedding with us.",
+  detailsHeading: 'Wedding Details',
+  ctaLabel: 'RSVP Now',
+  ctaHelpLine: "If the button doesn't work, use this link: {{rsvp_url}}",
+  closingLine: "We can't wait to celebrate with you.",
+  signoffLine: 'With love,<br>{{partner1_name}} & {{partner2_name}}',
+}
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\n/g, '<br>')
+
+const generateGuidedTemplateHtml = (fields: GuidedTemplateFields): string => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; background: #f7f7f7; color: #222;">
+  <div style="background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 14px rgba(0,0,0,0.08);">
+    <h1 style="margin: 0 0 10px 0; color: #333; text-align: center;">${escapeHtml(fields.heroTitle)}</h1>
+    <p style="text-align: center; margin: 0 0 24px 0; color: #555;">{{partner1_name}} & {{partner2_name}}</p>
+
+    <p>${escapeHtml(fields.greetingLine)}</p>
+    <p>${escapeHtml(fields.introLine)}</p>
+
+    <div style="background: #f2f2f2; border-radius: 10px; padding: 16px; margin: 22px 0;">
+      <p style="margin: 0 0 8px 0; font-weight: bold;">${escapeHtml(fields.detailsHeading)}</p>
+      <p style="margin: 4px 0;"><strong>Date:</strong> {{wedding_date}}</p>
+      <p style="margin: 4px 0;"><strong>Time:</strong> {{wedding_time}}</p>
+      <p style="margin: 4px 0;"><strong>Venue:</strong> {{venue_name}}</p>
+      <p style="margin: 4px 0;">{{venue_address}}</p>
+      <p style="margin: 4px 0;"><strong>Dress code:</strong> {{dress_code}}</p>
+      <p style="margin: 4px 0;"><strong>RSVP by:</strong> {{rsvp_deadline}}</p>
+    </div>
+
+    <div style="text-align: center; margin: 26px 0;">
+      <a href="{{rsvp_url}}" style="display: inline-block; background: #2d6cdf; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
+        ${escapeHtml(fields.ctaLabel)}
+      </a>
+    </div>
+
+    <p style="font-size: 14px; color: #666;">${escapeHtml(fields.ctaHelpLine)}</p>
+    <p>${escapeHtml(fields.closingLine)}</p>
+    <p>${fields.signoffLine.replace(/\n/g, '<br>')}</p>
+  </div>
+</body>
+</html>`
+
 const renderTemplate = (
   template: string,
   variables: Record<string, string | number | undefined>
@@ -85,6 +154,7 @@ export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [editorMode, setEditorMode] = useState<EditorMode>('guided')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [message, setMessage] = useState('')
@@ -99,6 +169,7 @@ export default function EmailTemplatesPage() {
   const [subject, setSubject] = useState('')
   const [htmlContent, setHtmlContent] = useState('')
   const [heroImageUrl, setHeroImageUrl] = useState('')
+  const [guidedFields, setGuidedFields] = useState<GuidedTemplateFields>(defaultGuidedFields)
   const previewSubject = useMemo(
     () => renderTemplate(subject || '(No subject)', samplePreviewValues),
     [subject]
@@ -120,8 +191,10 @@ export default function EmailTemplatesPage() {
   const resetForm = () => {
     setName('')
     setTemplateType('invite')
+    setEditorMode('guided')
     setSubject('')
-    setHtmlContent('')
+    setGuidedFields(defaultGuidedFields)
+    setHtmlContent(generateGuidedTemplateHtml(defaultGuidedFields))
     setHeroImageUrl('')
     setEditingId(null)
     setTestEmail('')
@@ -149,6 +222,7 @@ export default function EmailTemplatesPage() {
   }
 
   const openEditForm = (template: EmailTemplate) => {
+    setEditorMode('guided')
     setEditingId(template.id)
     setName(template.name)
     setTemplateType(template.templateType)
@@ -158,6 +232,17 @@ export default function EmailTemplatesPage() {
     setShowForm(true)
     setMessage('')
     setTestSendMessage('')
+  }
+
+  const updateGuidedField = (field: keyof GuidedTemplateFields, value: string) => {
+    setGuidedFields((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const applyGuidedTemplate = () => {
+    setHtmlContent(generateGuidedTemplateHtml(guidedFields))
   }
 
   const handleCancel = () => {
@@ -375,19 +460,133 @@ export default function EmailTemplatesPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="template-html">
-                  HTML Content <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="template-html"
-                  value={htmlContent}
-                  onChange={(e) => setHtmlContent(e.target.value)}
-                  required
-                  rows={14}
-                  className="font-mono text-xs"
-                  placeholder="<html>...</html>"
-                />
+              <div className="rounded-md border p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Template Editor Mode</p>
+                    <p className="text-xs text-muted-foreground">
+                      Guided mode generates HTML. Raw mode gives full HTML control.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={editorMode === 'guided' ? 'default' : 'outline'}
+                      onClick={() => setEditorMode('guided')}
+                    >
+                      Guided
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={editorMode === 'raw' ? 'default' : 'outline'}
+                      onClick={() => setEditorMode('raw')}
+                    >
+                      Raw HTML
+                    </Button>
+                  </div>
+                </div>
+
+                {editorMode === 'guided' ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="guided-hero-title">Hero title</Label>
+                        <Input
+                          id="guided-hero-title"
+                          value={guidedFields.heroTitle}
+                          onChange={(e) => updateGuidedField('heroTitle', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="guided-cta-label">CTA button label</Label>
+                        <Input
+                          id="guided-cta-label"
+                          value={guidedFields.ctaLabel}
+                          onChange={(e) => updateGuidedField('ctaLabel', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-greeting-line">Greeting line</Label>
+                      <Input
+                        id="guided-greeting-line"
+                        value={guidedFields.greetingLine}
+                        onChange={(e) => updateGuidedField('greetingLine', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-intro-line">Intro line</Label>
+                      <Textarea
+                        id="guided-intro-line"
+                        rows={2}
+                        value={guidedFields.introLine}
+                        onChange={(e) => updateGuidedField('introLine', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-details-heading">Details heading</Label>
+                      <Input
+                        id="guided-details-heading"
+                        value={guidedFields.detailsHeading}
+                        onChange={(e) => updateGuidedField('detailsHeading', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-cta-help-line">CTA help line</Label>
+                      <Input
+                        id="guided-cta-help-line"
+                        value={guidedFields.ctaHelpLine}
+                        onChange={(e) => updateGuidedField('ctaHelpLine', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-closing-line">Closing line</Label>
+                      <Input
+                        id="guided-closing-line"
+                        value={guidedFields.closingLine}
+                        onChange={(e) => updateGuidedField('closingLine', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="guided-signoff-line">Sign-off line (supports simple HTML)</Label>
+                      <Input
+                        id="guided-signoff-line"
+                        value={guidedFields.signoffLine}
+                        onChange={(e) => updateGuidedField('signoffLine', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button type="button" onClick={applyGuidedTemplate}>
+                        Apply Guided Template to HTML
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        This updates the HTML used for preview, test-send, and save.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="template-html">
+                      HTML Content <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="template-html"
+                      value={htmlContent}
+                      onChange={(e) => setHtmlContent(e.target.value)}
+                      required
+                      rows={14}
+                      className="font-mono text-xs"
+                      placeholder="<html>...</html>"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="rounded-md border p-4 space-y-3">

@@ -41,7 +41,7 @@ export default function AdminLayout({
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
@@ -108,7 +108,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full h-screen overflow-y-auto">
         <div className="bg-card border-b sticky top-0 z-10 shadow-sm">
           <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6">
             <div className="flex items-center gap-4">
