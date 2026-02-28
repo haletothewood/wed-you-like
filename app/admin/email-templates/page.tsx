@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+import { upload } from '@vercel/blob/client'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -163,6 +164,7 @@ export default function EmailTemplatesPage() {
   const [sendingTest, setSendingTest] = useState(false)
   const [testSendMessage, setTestSendMessage] = useState('')
   const [testSendError, setTestSendError] = useState(false)
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false)
 
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<'invite' | 'thank_you'>('invite')
@@ -339,6 +341,28 @@ export default function EmailTemplatesPage() {
     }
   }
 
+  const handleHeroImageUpload = async (file: File) => {
+    setUploadingHeroImage(true)
+    setMessage('')
+
+    try {
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin/uploads/hero-image',
+      })
+
+      setHeroImageUrl(blob.url)
+      setMessage('Hero image uploaded successfully')
+      setIsError(false)
+    } catch (error) {
+      console.error('Hero image upload failed:', error)
+      setMessage('Failed to upload hero image')
+      setIsError(true)
+    } finally {
+      setUploadingHeroImage(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this template?')) return
 
@@ -458,6 +482,23 @@ export default function EmailTemplatesPage() {
                   onChange={(e) => setHeroImageUrl(e.target.value)}
                   placeholder="https://example.com/image.jpg"
                 />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="max-w-sm"
+                    disabled={uploadingHeroImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      void handleHeroImageUpload(file)
+                      e.currentTarget.value = ''
+                    }}
+                  />
+                  {uploadingHeroImage && (
+                    <span className="text-xs text-muted-foreground">Uploading...</span>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-md border p-4 space-y-4">

@@ -28,6 +28,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ReportData | null>(null)
   const [exporting, setExporting] = useState<string | null>(null)
+  const [sendingPhotoCampaign, setSendingPhotoCampaign] = useState(false)
 
   useEffect(() => {
     fetchReports()
@@ -63,6 +64,33 @@ export default function ReportsPage() {
       alert('Failed to export data')
     } finally {
       setExporting(null)
+    }
+  }
+
+  const handleSendPhotoShareCampaign = async () => {
+    if (!confirm('Send the day-of photo share email to all invites with an email address?')) {
+      return
+    }
+
+    setSendingPhotoCampaign(true)
+    try {
+      const response = await fetch('/api/admin/campaigns/photo-share', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send photo share campaign')
+      }
+
+      alert(
+        `Photo share campaign complete.\n\nSent: ${data.sent}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
+      )
+    } catch (error) {
+      console.error('Error sending photo share campaign:', error)
+      alert(error instanceof Error ? error.message : 'Failed to send photo share campaign')
+    } finally {
+      setSendingPhotoCampaign(false)
     }
   }
 
@@ -289,6 +317,23 @@ export default function ReportsPage() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Day-Of Photo Share Campaign</CardTitle>
+          <CardDescription>
+            Send a separate email to all invites with a personal photo upload link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleSendPhotoShareCampaign}
+            disabled={sendingPhotoCampaign}
+          >
+            {sendingPhotoCampaign ? 'Sending...' : 'Send Photo Share Emails'}
+          </Button>
         </CardContent>
       </Card>
     </div>
