@@ -54,14 +54,18 @@ export async function POST(
     })
 
     if (result.sentTo) {
-      await emailCampaignEventRepository.logEvent({
-        eventType: 'invite_send',
-        status: 'sent',
-        templateId: templateIdForLog,
-        inviteId: inviteIdForLog,
-        recipientEmail: result.sentTo,
-        subject: subjectForLog,
-      })
+      try {
+        await emailCampaignEventRepository.logEvent({
+          eventType: 'invite_send',
+          status: 'sent',
+          templateId: templateIdForLog,
+          inviteId: inviteIdForLog,
+          recipientEmail: result.sentTo,
+          subject: subjectForLog,
+        })
+      } catch (loggingError) {
+        console.error('Failed to log invite send success:', loggingError)
+      }
     }
 
     return NextResponse.json(result)

@@ -78,13 +78,17 @@ export async function POST(request: Request) {
           html,
         })
 
-        await emailCampaignEventRepository.logEvent({
-          eventType: 'photo_share_send',
-          status: 'sent',
-          inviteId: invite.id,
-          recipientEmail: primaryGuest.email,
-          subject,
-        })
+        try {
+          await emailCampaignEventRepository.logEvent({
+            eventType: 'photo_share_send',
+            status: 'sent',
+            inviteId: invite.id,
+            recipientEmail: primaryGuest.email,
+            subject,
+          })
+        } catch (loggingError) {
+          console.error('Failed to log photo share send success:', loggingError)
+        }
 
         result.sent++
       } catch (error) {
