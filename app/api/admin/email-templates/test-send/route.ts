@@ -52,6 +52,7 @@ export async function POST(request: Request) {
 
     let subject = ''
     let htmlContent = ''
+    let heroImageUrl: string | undefined
 
     if (body.templateId) {
       const template = await emailTemplateRepository.findById(body.templateId)
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       }
       subject = template.subject
       htmlContent = template.htmlContent
+      heroImageUrl = template.heroImageUrl
     } else {
       if (!body.subject || !body.htmlContent) {
         return NextResponse.json(
@@ -69,10 +71,15 @@ export async function POST(request: Request) {
       }
       subject = body.subject
       htmlContent = body.htmlContent
+      heroImageUrl = body.heroImageUrl
     }
 
     const renderedSubject = TemplateRenderer.render(subject, variables)
-    const renderedHtml = TemplateRenderer.render(htmlContent, variables)
+    const renderedHtml = TemplateRenderer.renderWithHeroImage(
+      htmlContent,
+      variables,
+      heroImageUrl
+    )
 
     await emailService.sendEmail({
       to: emailValidation.data,
