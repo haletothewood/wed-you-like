@@ -222,7 +222,7 @@ export default function EmailTemplatesPage() {
   }
 
   const openEditForm = (template: EmailTemplate) => {
-    setEditorMode('raw')
+    setEditorMode('guided')
     setEditingId(template.id)
     setName(template.name)
     setTemplateType(template.templateType)
