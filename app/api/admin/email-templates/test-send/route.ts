@@ -9,23 +9,6 @@ const emailTemplateRepository = new DrizzleEmailTemplateRepository()
 const weddingSettingsRepository = new DrizzleWeddingSettingsRepository()
 const emailService = new ResendEmailService(process.env.RESEND_API_KEY || '')
 
-interface TemplateVariables {
-  partner1_name: string
-  partner2_name: string
-  wedding_date: string
-  wedding_time: string
-  venue_name: string
-  venue_address: string
-  dress_code: string
-  rsvp_deadline: string
-  registry_url: string
-  additional_info: string
-  guest_name: string
-  rsvp_url: string
-  adults_count: number
-  children_count: number
-}
-
 const getBaseUrl = (request: Request): string =>
   process.env.BASE_URL ||
   `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`
@@ -33,7 +16,7 @@ const getBaseUrl = (request: Request): string =>
 const buildVariables = (
   baseUrl: string,
   settings: Awaited<ReturnType<DrizzleWeddingSettingsRepository['get']>>
-): TemplateVariables => ({
+): Record<string, string | number | undefined> => ({
   partner1_name: settings?.partner1Name || 'Partner One',
   partner2_name: settings?.partner2Name || 'Partner Two',
   wedding_date: settings?.weddingDate || 'Wedding Date',
