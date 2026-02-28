@@ -59,3 +59,4 @@ coverage/
 # Koi PAI files
 .cursor/
 .codex/
+.vercel/
