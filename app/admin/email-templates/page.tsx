@@ -190,6 +190,21 @@ export default function EmailTemplatesPage() {
     fetchTemplates()
   }, [])
 
+  const getUploadErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message
+    }
+
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+      const message = String((error as { message?: unknown }).message ?? '')
+      if (message.trim()) {
+        return message
+      }
+    }
+
+    return 'Failed to upload hero image'
+  }
+
   const resetForm = () => {
     setName('')
     setTemplateType('invite')
@@ -342,6 +357,14 @@ export default function EmailTemplatesPage() {
   }
 
   const handleHeroImageUpload = async (file: File) => {
+    const maxSizeInBytes = 25 * 1024 * 1024
+
+    if (file.size > maxSizeInBytes) {
+      setMessage('Image is too large. Please upload a file under 25MB.')
+      setIsError(true)
+      return
+    }
+
     setUploadingHeroImage(true)
     setMessage('')
 
@@ -349,6 +372,7 @@ export default function EmailTemplatesPage() {
       const blob = await upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/admin/uploads/hero-image',
+        multipart: true,
       })
 
       setHeroImageUrl(blob.url)
@@ -356,7 +380,7 @@ export default function EmailTemplatesPage() {
       setIsError(false)
     } catch (error) {
       console.error('Hero image upload failed:', error)
-      setMessage('Failed to upload hero image')
+      setMessage(getUploadErrorMessage(error))
       setIsError(true)
     } finally {
       setUploadingHeroImage(false)
