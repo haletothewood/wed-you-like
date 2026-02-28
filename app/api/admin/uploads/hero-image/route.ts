@@ -3,6 +3,7 @@ import { put } from '@vercel/blob'
 
 export async function POST(request: Request): Promise<NextResponse> {
   const maxSizeInBytes = 25 * 1024 * 1024
+  const blobAccess = process.env.BLOB_HERO_IMAGE_ACCESS === 'public' ? 'public' : 'private'
 
   try {
     const formData = await request.formData()
@@ -30,7 +31,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const safePathname = pathname.replace(/^\/+/, '')
 
     const blob = await put(`hero-images/${safePathname}`, file, {
-      access: 'public',
+      access: blobAccess,
       addRandomSuffix: true,
       contentType: file.type || undefined,
       multipart: false,
