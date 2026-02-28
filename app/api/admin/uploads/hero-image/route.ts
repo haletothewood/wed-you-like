@@ -9,8 +9,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        maximumSizeInBytes: 10 * 1024 * 1024,
+        allowedContentTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+        maximumSizeInBytes: 25 * 1024 * 1024,
         addRandomSuffix: true,
         tokenPayload: JSON.stringify({ uploadType: 'hero_image' }),
       }),
