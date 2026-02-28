@@ -22,6 +22,35 @@ interface ReportData {
     MAIN: Array<{ name: string; description: string | null; count: number }>
     DESSERT: Array<{ name: string; description: string | null; count: number }>
   }
+  emailCampaigns: {
+    totals: {
+      sent: number
+      failed: number
+      failureRate: number
+      lastSentAt: string | null
+    }
+    byTemplate: Array<{
+      templateId: string
+      templateName: string
+      sent: number
+      failed: number
+      lastSentAt: string | null
+    }>
+    recentFailures: Array<{
+      id: string
+      eventType: 'invite_send' | 'test_send' | 'photo_share_send'
+      templateName: string | null
+      recipientEmail: string
+      errorMessage: string | null
+      createdAt: string
+    }>
+  }
+}
+
+const formatEventTypeLabel = (eventType: 'invite_send' | 'test_send' | 'photo_share_send'): string => {
+  if (eventType === 'invite_send') return 'Invite Send'
+  if (eventType === 'test_send') return 'Test Send'
+  return 'Photo Share'
 }
 
 export default function ReportsPage() {
@@ -277,6 +306,91 @@ export default function ReportsPage() {
               No meal selections yet
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Email Campaign Analytics</CardTitle>
+          <CardDescription>
+            Delivery outcomes across invite sends, test sends, and photo-share campaigns
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-success/10 rounded-lg">
+              <div className="text-3xl font-bold text-success">{data.emailCampaigns.totals.sent}</div>
+              <div className="text-sm text-muted-foreground mt-1">Emails Sent</div>
+            </div>
+            <div className="text-center p-4 bg-destructive/10 rounded-lg">
+              <div className="text-3xl font-bold text-destructive">{data.emailCampaigns.totals.failed}</div>
+              <div className="text-sm text-muted-foreground mt-1">Email Failures</div>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="text-3xl font-bold text-muted-foreground">{data.emailCampaigns.totals.failureRate}%</div>
+              <div className="text-sm text-muted-foreground mt-1">Failure Rate</div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-3">By Invite Template</h3>
+            {data.emailCampaigns.byTemplate.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No invite send events recorded yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {data.emailCampaigns.byTemplate.map((template) => (
+                  <div
+                    key={template.templateId}
+                    className="flex flex-col md:flex-row md:items-center md:justify-between p-3 bg-muted rounded-lg gap-2"
+                  >
+                    <div>
+                      <p className="font-medium">{template.templateName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Last sent:{' '}
+                        {template.lastSentAt
+                          ? new Date(template.lastSentAt).toLocaleString()
+                          : 'Never'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default">Sent: {template.sent}</Badge>
+                      <Badge variant={template.failed > 0 ? 'destructive' : 'secondary'}>
+                        Failed: {template.failed}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-3">Recent Failures</h3>
+            {data.emailCampaigns.recentFailures.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent email failures.</p>
+            ) : (
+              <div className="space-y-2">
+                {data.emailCampaigns.recentFailures.map((failure) => (
+                  <div key={failure.id} className="p-3 border rounded-lg">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <Badge variant="destructive">{formatEventTypeLabel(failure.eventType)}</Badge>
+                      {failure.templateName && <Badge variant="outline">{failure.templateName}</Badge>}
+                    </div>
+                    <p className="text-sm">
+                      <span className="font-medium">Recipient:</span> {failure.recipientEmail}
+                    </p>
+                    <p className="text-sm">
+                      <span className="font-medium">Error:</span>{' '}
+                      <span className="text-muted-foreground">{failure.errorMessage || 'Unknown error'}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(failure.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

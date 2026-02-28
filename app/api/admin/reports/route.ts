@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/infrastructure/database/connection'
 import { invites, rsvps, mealSelections, mealOptions } from '@/infrastructure/database/schema'
 import { eq, isNotNull } from 'drizzle-orm'
+import { DrizzleEmailCampaignEventRepository } from '@/infrastructure/database/repositories/DrizzleEmailCampaignEventRepository'
+
+const emailCampaignEventRepository = new DrizzleEmailCampaignEventRepository()
 
 export async function GET() {
   try {
@@ -74,6 +77,18 @@ export async function GET() {
       }
     })
 
+    const [templateAnalytics, recentFailures, overallEmailCounts] = await Promise.all([
+      emailCampaignEventRepository.getTemplateAnalytics(),
+      emailCampaignEventRepository.getRecentFailures(15),
+      emailCampaignEventRepository.getOverallCounts(),
+    ])
+
+    const totalEmailAttempts = overallEmailCounts.sent + overallEmailCounts.failed
+    const emailFailureRate =
+      totalEmailAttempts > 0
+        ? Math.round((overallEmailCounts.failed / totalEmailAttempts) * 100)
+        : 0
+
     return NextResponse.json({
       overview: {
         totalInvites: allInvites.length,
@@ -84,6 +99,16 @@ export async function GET() {
         totalGuestsAttending,
       },
       mealCounts: mealCountsByCourse,
+      emailCampaigns: {
+        totals: {
+          sent: overallEmailCounts.sent,
+          failed: overallEmailCounts.failed,
+          failureRate: emailFailureRate,
+          lastSentAt: overallEmailCounts.lastSentAt,
+        },
+        byTemplate: templateAnalytics,
+        recentFailures,
+      },
     })
   } catch (error) {
     console.error('Error fetching reports:', error)

@@ -165,6 +165,28 @@ export const emailTemplates = sqliteTable('email_templates', {
     .default(sql`(unixepoch())`),
 })
 
+export const emailCampaignEvents = sqliteTable('email_campaign_events', {
+  id: text('id').primaryKey(),
+  eventType: text('event_type', {
+    enum: ['invite_send', 'test_send', 'photo_share_send'],
+  }).notNull(),
+  status: text('status', {
+    enum: ['sent', 'failed'],
+  }).notNull(),
+  templateId: text('template_id').references(() => emailTemplates.id, {
+    onDelete: 'set null',
+  }),
+  inviteId: text('invite_id').references(() => invites.id, {
+    onDelete: 'set null',
+  }),
+  recipientEmail: text('recipient_email').notNull(),
+  subject: text('subject'),
+  errorMessage: text('error_message'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+})
+
 export const adminUsers = sqliteTable('admin_users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),
