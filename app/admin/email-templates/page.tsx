@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { upload } from '@vercel/blob/client'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -369,13 +368,21 @@ export default function EmailTemplatesPage() {
     setMessage('')
 
     try {
-      const blob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/admin/uploads/hero-image',
-        multipart: false,
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('pathname', file.name)
+
+      const response = await fetch('/api/admin/uploads/hero-image', {
+        method: 'POST',
+        body: formData,
       })
 
-      setHeroImageUrl(blob.url)
+      const data = (await response.json()) as { url?: string; error?: string }
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || 'Failed to upload hero image')
+      }
+
+      setHeroImageUrl(data.url)
       setMessage('Hero image uploaded successfully')
       setIsError(false)
     } catch (error) {

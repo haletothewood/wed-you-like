@@ -1,29 +1,53 @@
 import { NextResponse } from 'next/server'
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
+import { put } from '@vercel/blob'
 
 export async function POST(request: Request): Promise<NextResponse> {
-  try {
-    const body = (await request.json()) as HandleUploadBody
+  const maxSizeInBytes = 25 * 1024 * 1024
 
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async () => ({
-        maximumSizeInBytes: 25 * 1024 * 1024,
-        addRandomSuffix: true,
-        tokenPayload: JSON.stringify({ uploadType: 'hero_image' }),
-      }),
-      onUploadCompleted: async () => {
-        // No-op for now. URL is returned to the client and stored in template data.
-      },
+  try {
+    const formData = await request.formData()
+    const file = formData.get('file')
+    const pathnameInput = formData.get('pathname')
+
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      )
+    }
+
+    if (file.size > maxSizeInBytes) {
+      return NextResponse.json(
+        { error: 'Image is too large. Please upload a file under 25MB.' },
+        { status: 400 }
+      )
+    }
+
+    const pathname =
+      typeof pathnameInput === 'string' && pathnameInput.trim()
+        ? pathnameInput.trim()
+        : file.name
+    const safePathname = pathname.replace(/^\/+/, '')
+
+    const blob = await put(`hero-images/${safePathname}`, file, {
+      access: 'public',
+      addRandomSuffix: true,
+      contentType: file.type || undefined,
+      multipart: false,
     })
 
-    return NextResponse.json(jsonResponse)
+    return NextResponse.json({ url: blob.url })
   } catch (error) {
-    console.error('Error generating hero image upload token:', error)
+    console.error('Error uploading hero image:', error)
+
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Failed to upload hero image'
+
     return NextResponse.json(
-      { error: 'Failed to initialize upload' },
-      { status: 400 }
+      { error: message },
+      { status: 500 }
     )
   }
 }
