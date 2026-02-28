@@ -8,6 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface EmailTemplate {
   id: string
@@ -23,10 +34,30 @@ interface EmailTemplate {
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [message, setMessage] = useState('')
+  const [isError, setIsError] = useState(false)
+
+  const [name, setName] = useState('')
+  const [templateType, setTemplateType] = useState<'invite' | 'thank_you'>('invite')
+  const [subject, setSubject] = useState('')
+  const [htmlContent, setHtmlContent] = useState('')
+  const [heroImageUrl, setHeroImageUrl] = useState('')
 
   useEffect(() => {
     fetchTemplates()
   }, [])
+
+  const resetForm = () => {
+    setName('')
+    setTemplateType('invite')
+    setSubject('')
+    setHtmlContent('')
+    setHeroImageUrl('')
+    setEditingId(null)
+  }
 
   const fetchTemplates = async () => {
     try {
@@ -40,14 +71,95 @@ export default function EmailTemplatesPage() {
     }
   }
 
+  const openCreateForm = () => {
+    resetForm()
+    setShowForm(true)
+    setMessage('')
+  }
+
+  const openEditForm = (template: EmailTemplate) => {
+    setEditingId(template.id)
+    setName(template.name)
+    setTemplateType(template.templateType)
+    setSubject(template.subject)
+    setHtmlContent(template.htmlContent)
+    setHeroImageUrl(template.heroImageUrl || '')
+    setShowForm(true)
+    setMessage('')
+  }
+
+  const handleCancel = () => {
+    resetForm()
+    setShowForm(false)
+    setMessage('')
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setMessage('')
+
+    try {
+      const payload = {
+        subject,
+        htmlContent,
+        heroImageUrl: heroImageUrl.trim() || undefined,
+      }
+
+      let response: Response
+
+      if (editingId) {
+        response = await fetch(`/api/admin/email-templates/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        response = await fetch('/api/admin/email-templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            templateType,
+            ...payload,
+          }),
+        })
+      }
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save template')
+      }
+
+      setMessage(editingId ? 'Template updated successfully' : 'Template created successfully')
+      setIsError(false)
+      resetForm()
+      setShowForm(false)
+      await fetchTemplates()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to save template')
+      setIsError(true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this template?')) return
 
     try {
-      await fetch(`/api/admin/email-templates/${id}`, { method: 'DELETE' })
+      const response = await fetch(`/api/admin/email-templates/${id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        throw new Error('Failed to delete template')
+      }
+      setMessage('Template deleted successfully')
+      setIsError(false)
       fetchTemplates()
     } catch (error) {
       console.error('Error deleting template:', error)
+      setMessage('Failed to delete template')
+      setIsError(true)
     }
   }
 
@@ -60,12 +172,133 @@ export default function EmailTemplatesPage() {
       <PageHeader
         title="Email Templates"
         description="Manage email templates for invitations and thank you messages"
+        action={
+          <Button onClick={openCreateForm}>
+            Create Template
+          </Button>
+        }
       />
+
+      {message && (
+        <Alert variant={isError ? 'destructive' : 'default'} className="mb-4">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
+
+      {showForm && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>{editingId ? 'Edit Email Template' : 'Create Email Template'}</CardTitle>
+            <CardDescription>
+              {editingId
+                ? 'Update subject, body, and hero image URL for this template'
+                : 'Create a new invitation or thank-you email template'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-name">
+                    Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="template-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    disabled={!!editingId}
+                    placeholder="e.g., Main Wedding Invite"
+                  />
+                  {editingId && (
+                    <p className="text-xs text-muted-foreground">
+                      Template name cannot be changed yet.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="template-type">
+                    Type <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={templateType}
+                    onValueChange={(value) => setTemplateType(value as 'invite' | 'thank_you')}
+                    disabled={!!editingId}
+                  >
+                    <SelectTrigger id="template-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="invite">Invitation</SelectItem>
+                      <SelectItem value="thank_you">Thank You</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {editingId && (
+                    <p className="text-xs text-muted-foreground">
+                      Template type cannot be changed yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="template-subject">
+                  Subject <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="template-subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                  placeholder="e.g., You're Invited to {{partner1_name}} & {{partner2_name}}'s Wedding"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="template-hero">Hero Image URL (optional)</Label>
+                <Input
+                  id="template-hero"
+                  type="url"
+                  value={heroImageUrl}
+                  onChange={(e) => setHeroImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="template-html">
+                  HTML Content <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="template-html"
+                  value={htmlContent}
+                  onChange={(e) => setHtmlContent(e.target.value)}
+                  required
+                  rows={14}
+                  className="font-mono text-xs"
+                  placeholder="<html>...</html>"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Create Template'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleCancel} disabled={submitting}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {templates.length === 0 ? (
         <EmptyState
           title="No email templates found"
-          description="Use seed scripts to create default templates, or add create functionality."
+          description="Create your first template to start sending invitations."
+          action={<Button onClick={openCreateForm}>Create First Template</Button>}
         />
       ) : (
         <div className="space-y-4">
@@ -84,12 +317,20 @@ export default function EmailTemplatesPage() {
                       </Badge>
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleDelete(template.id)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => openEditForm(template)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDelete(template.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <Separator />
