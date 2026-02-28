@@ -10,7 +10,15 @@ export interface InviteDTO {
   adultsCount: number
   childrenCount: number
   plusOneAllowed: boolean
-  guests: Array<{ id: string; name: string; email: string }>
+  guests: Array<{
+    id: string
+    name: string
+    email: string
+    isPlusOne: boolean
+    isChild: boolean
+    parentGuestId?: string
+    isInviteLead: boolean
+  }>
   sentAt: string | null
   createdAt: string
   rsvpStatus: {

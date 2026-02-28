@@ -4,6 +4,10 @@ export interface Guest {
   id: string
   name: string
   email: string
+  isPlusOne: boolean
+  isChild: boolean
+  parentGuestId?: string
+  isInviteLead: boolean
 }
 
 export interface InviteProps {
@@ -85,6 +89,10 @@ export class Invite {
           id: guestId,
           name: params.guestName,
           email: params.email,
+          isPlusOne: false,
+          isChild: false,
+          parentGuestId: undefined,
+          isInviteLead: true,
         },
       ],
       sentAt: null,
@@ -95,17 +103,21 @@ export class Invite {
 
   static createGroup(params: {
     groupName: string
-    adultsCount: number
-    childrenCount: number
-    guests: Array<{ name: string; email: string }>
+    guests: Array<{
+      id: string
+      name: string
+      email: string
+      isChild: boolean
+      parentGuestId?: string
+      isInviteLead?: boolean
+    }>
   }): Invite {
     if (!params.groupName || params.groupName.trim() === '') {
       throw new Error('Group name is required')
     }
 
-    const totalCount = params.adultsCount + params.childrenCount
-    if (params.guests.length !== totalCount) {
-      throw new Error('Guest count must match adultsCount + childrenCount')
+    if (params.guests.length < 2) {
+      throw new Error('Group invite requires at least two guests')
     }
 
     const hasEmailGuest = params.guests.some(
@@ -115,12 +127,58 @@ export class Invite {
       throw new Error('At least one guest must have an email address')
     }
 
-    params.guests.forEach((guest) => {
+    const guestIds = new Set(params.guests.map((g) => g.id))
+    if (guestIds.size !== params.guests.length) {
+      throw new Error('Each guest must have a unique ID')
+    }
+
+    const adults = params.guests.filter((g) => !g.isChild)
+    const children = params.guests.filter((g) => g.isChild)
+
+    if (adults.length === 0) {
+      throw new Error('Group invite must include at least one adult guest')
+    }
+
+    for (const guest of params.guests) {
       Invite.validateGuestName(guest.name)
       if (guest.email && guest.email.trim() !== '') {
         Invite.validateEmail(guest.email)
       }
-    })
+
+      if (!guest.isChild && guest.parentGuestId) {
+        throw new Error('Adult guests cannot have a parent guest')
+      }
+
+      if (guest.isChild && !guest.parentGuestId) {
+        throw new Error('Child guests must have a parent guest')
+      }
+    }
+
+    const adultsById = new Map(adults.map((g) => [g.id, g]))
+
+    for (const child of children) {
+      if (!child.parentGuestId || !guestIds.has(child.parentGuestId)) {
+        throw new Error('Child guest parent must exist in the same invite')
+      }
+
+      const parent = adultsById.get(child.parentGuestId)
+      if (!parent) {
+        throw new Error('Child guest parent must be an adult guest')
+      }
+
+      if (parent.isInviteLead) {
+        throw new Error('Children cannot be assigned to the invite lead')
+      }
+    }
+
+    const leadCount = adults.filter((g) => g.isInviteLead).length
+    if (leadCount > 1) {
+      throw new Error('Only one invite lead is allowed per group invite')
+    }
+    const firstAdultId = adults[0]?.id
+
+    const adultsCount = adults.length
+    const childrenCount = children.length
 
     const now = new Date()
 
@@ -128,13 +186,17 @@ export class Invite {
       id: nanoid(),
       token: nanoid(21),
       groupName: params.groupName,
-      adultsCount: params.adultsCount,
-      childrenCount: params.childrenCount,
+      adultsCount,
+      childrenCount,
       plusOneAllowed: false,
       guests: params.guests.map((g) => ({
-        id: nanoid(),
+        id: g.id,
         name: g.name,
         email: g.email,
+        isPlusOne: false,
+        isChild: g.isChild,
+        parentGuestId: g.parentGuestId,
+        isInviteLead: leadCount === 0 ? g.id === firstAdultId : Boolean(g.isInviteLead),
       })),
       sentAt: null,
       createdAt: now,

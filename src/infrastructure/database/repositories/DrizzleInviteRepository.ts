@@ -44,6 +44,10 @@ export class DrizzleInviteRepository implements InviteRepository {
           name: guest.name,
           email: guest.email,
           inviteId: invite.id,
+          isPlusOne: guest.isPlusOne,
+          isChild: guest.isChild,
+          parentGuestId: guest.parentGuestId,
+          isInviteLead: guest.isInviteLead,
           createdAt: now,
           updatedAt: now,
         }))
@@ -63,7 +67,9 @@ export class DrizzleInviteRepository implements InviteRepository {
       return null
     }
 
-    return this.toDomain(inviteRecord)
+    return this.toDomain(
+      inviteRecord as unknown as Parameters<DrizzleInviteRepository['toDomain']>[0]
+    )
   }
 
   async findByToken(token: string): Promise<Invite | null> {
@@ -78,7 +84,9 @@ export class DrizzleInviteRepository implements InviteRepository {
       return null
     }
 
-    return this.toDomain(inviteRecord)
+    return this.toDomain(
+      inviteRecord as unknown as Parameters<DrizzleInviteRepository['toDomain']>[0]
+    )
   }
 
   async findAll(): Promise<Invite[]> {
@@ -88,7 +96,11 @@ export class DrizzleInviteRepository implements InviteRepository {
       },
     })
 
-    return inviteRecords.map((record) => this.toDomain(record))
+    return inviteRecords.map((record) =>
+      this.toDomain(
+        record as unknown as Parameters<DrizzleInviteRepository['toDomain']>[0]
+      )
+    )
   }
 
   async delete(id: string): Promise<void> {
@@ -114,13 +126,25 @@ export class DrizzleInviteRepository implements InviteRepository {
     sentAt: Date | null
     createdAt: Date
     updatedAt: Date
-    guests?: Array<{ id: string; name: string; email: string }>
+    guests?: Array<{
+      id: string
+      name: string
+      email: string
+      isPlusOne?: boolean | null
+      isChild?: boolean | null
+      parentGuestId?: string | null
+      isInviteLead?: boolean | null
+    }>
   }): Invite {
     const guestsList: Guest[] =
       record.guests?.map((g) => ({
         id: g.id,
         name: g.name,
         email: g.email,
+        isPlusOne: Boolean(g.isPlusOne),
+        isChild: Boolean(g.isChild),
+        parentGuestId: g.parentGuestId || undefined,
+        isInviteLead: Boolean(g.isInviteLead),
       })) || []
 
     // We need to reconstruct the Invite through reflection since constructor is private

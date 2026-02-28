@@ -86,6 +86,9 @@ export class SubmitRSVP {
             email: '',
             inviteId: invite.id,
             isPlusOne: true,
+            isChild: false,
+            parentGuestId: undefined,
+            isInviteLead: false,
           }
           const saved = await this.guestRepository.save(newPlusOne)
           plusOneGuestId = saved.id

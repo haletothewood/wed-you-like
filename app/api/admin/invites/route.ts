@@ -49,8 +49,6 @@ export async function POST(request: Request) {
       const createGroupInvite = new CreateGroupInvite(inviteRepository)
       const result = await createGroupInvite.execute({
         groupName: data.groupName,
-        adultsCount: data.adultsCount,
-        childrenCount: data.childrenCount,
         guests: data.guests,
       })
 
