@@ -31,6 +31,27 @@ interface EmailTemplate {
   updatedAt: string
 }
 
+const templateVariables: Array<{
+  key: string
+  description: string
+  optional: boolean
+}> = [
+  { key: 'partner1_name', description: 'First partner name', optional: false },
+  { key: 'partner2_name', description: 'Second partner name', optional: false },
+  { key: 'wedding_date', description: 'Wedding date', optional: false },
+  { key: 'wedding_time', description: 'Wedding time', optional: false },
+  { key: 'venue_name', description: 'Venue name', optional: false },
+  { key: 'venue_address', description: 'Venue address', optional: false },
+  { key: 'guest_name', description: 'Guest or group display name', optional: false },
+  { key: 'rsvp_url', description: 'Unique RSVP link', optional: false },
+  { key: 'adults_count', description: 'Number of invited adults', optional: false },
+  { key: 'children_count', description: 'Number of invited children', optional: false },
+  { key: 'dress_code', description: 'Dress code from wedding settings', optional: true },
+  { key: 'rsvp_deadline', description: 'RSVP deadline from settings', optional: true },
+  { key: 'registry_url', description: 'Registry URL from settings', optional: true },
+  { key: 'additional_info', description: 'Additional info from settings', optional: true },
+]
+
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -279,6 +300,26 @@ export default function EmailTemplatesPage() {
                   className="font-mono text-xs"
                   placeholder="<html>...</html>"
                 />
+              </div>
+
+              <div className="rounded-md border bg-muted/30 p-4">
+                <p className="text-sm font-medium mb-2">Available placeholders</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Optional placeholders are safe to use. If the value is missing, it renders as blank.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {templateVariables.map((variable) => (
+                    <div key={variable.key} className="text-xs">
+                      <code>{`{{${variable.key}}}`}</code>
+                      <span className="text-muted-foreground"> - {variable.description}</span>
+                      {variable.optional && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          Optional
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-2">
