@@ -91,6 +91,8 @@ export default function EmailTemplatesPage() {
   const [isError, setIsError] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
+  const [testSendMessage, setTestSendMessage] = useState('')
+  const [testSendError, setTestSendError] = useState(false)
 
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<'invite' | 'thank_you'>('invite')
@@ -123,6 +125,8 @@ export default function EmailTemplatesPage() {
     setHeroImageUrl('')
     setEditingId(null)
     setTestEmail('')
+    setTestSendMessage('')
+    setTestSendError(false)
   }
 
   const fetchTemplates = async () => {
@@ -141,6 +145,7 @@ export default function EmailTemplatesPage() {
     resetForm()
     setShowForm(true)
     setMessage('')
+    setTestSendMessage('')
   }
 
   const openEditForm = (template: EmailTemplate) => {
@@ -152,12 +157,14 @@ export default function EmailTemplatesPage() {
     setHeroImageUrl(template.heroImageUrl || '')
     setShowForm(true)
     setMessage('')
+    setTestSendMessage('')
   }
 
   const handleCancel = () => {
     resetForm()
     setShowForm(false)
     setMessage('')
+    setTestSendMessage('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,13 +220,13 @@ export default function EmailTemplatesPage() {
 
   const handleSendTestEmail = async () => {
     if (!testEmail.trim()) {
-      setMessage('Please enter a test email address')
-      setIsError(true)
+      setTestSendMessage('Please enter a test email address')
+      setTestSendError(true)
       return
     }
 
     setSendingTest(true)
-    setMessage('')
+    setTestSendMessage('')
 
     try {
       const response = await fetch('/api/admin/email-templates/test-send', {
@@ -237,11 +244,11 @@ export default function EmailTemplatesPage() {
         throw new Error(data.error || 'Failed to send test email')
       }
 
-      setMessage(`Test email sent to ${data.sentTo}`)
-      setIsError(false)
+      setTestSendMessage(`Test email sent to ${data.sentTo}`)
+      setTestSendError(false)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to send test email')
-      setIsError(true)
+      setTestSendMessage(error instanceof Error ? error.message : 'Failed to send test email')
+      setTestSendError(true)
     } finally {
       setSendingTest(false)
     }
@@ -446,6 +453,11 @@ export default function EmailTemplatesPage() {
                     {sendingTest ? 'Sending...' : 'Send Test Email'}
                   </Button>
                 </div>
+                {testSendMessage && (
+                  <Alert variant={testSendError ? 'destructive' : 'default'}>
+                    <AlertDescription>{testSendMessage}</AlertDescription>
+                  </Alert>
+                )}
               </div>
 
               <div className="flex gap-2">
