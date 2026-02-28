@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         continue
       }
 
-      const shareUrl = `${baseUrl}/rsvp/${invite.token}`
+      const shareUrl = `${baseUrl}/photos/${invite.token}`
       const guestName = invite.groupName || primaryGuest.name
 
       const subject = `Share your photos from ${coupleNames}'s wedding`
