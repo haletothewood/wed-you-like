@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -52,6 +52,35 @@ const templateVariables: Array<{
   { key: 'additional_info', description: 'Additional info from settings', optional: true },
 ]
 
+const samplePreviewValues: Record<string, string | number> = {
+  partner1_name: 'Alex',
+  partner2_name: 'David',
+  wedding_date: 'Saturday, June 15th, 2026',
+  wedding_time: '4:00 PM',
+  venue_name: 'The Grand Hall',
+  venue_address: '123 Celebration Lane, London',
+  dress_code: 'Cocktail Attire',
+  rsvp_deadline: 'May 1st, 2026',
+  registry_url: 'https://example.com/registry',
+  additional_info: 'Ceremony starts promptly at 4:00 PM.',
+  guest_name: 'Test Guest',
+  rsvp_url: 'https://example.com/rsvp/test-link',
+  adults_count: 2,
+  children_count: 0,
+}
+
+const renderTemplate = (
+  template: string,
+  variables: Record<string, string | number | undefined>
+): string => {
+  let rendered = template
+  for (const [key, value] of Object.entries(variables)) {
+    const replacement = value === undefined || value === null ? '' : String(value)
+    rendered = rendered.replace(new RegExp(`{{${key}}}`, 'g'), replacement)
+  }
+  return rendered
+}
+
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,12 +89,27 @@ export default function EmailTemplatesPage() {
   const [showForm, setShowForm] = useState(false)
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const [testEmail, setTestEmail] = useState('')
+  const [sendingTest, setSendingTest] = useState(false)
 
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<'invite' | 'thank_you'>('invite')
   const [subject, setSubject] = useState('')
   const [htmlContent, setHtmlContent] = useState('')
   const [heroImageUrl, setHeroImageUrl] = useState('')
+  const previewSubject = useMemo(
+    () => renderTemplate(subject || '(No subject)', samplePreviewValues),
+    [subject]
+  )
+  const previewHtml = useMemo(
+    () =>
+      renderTemplate(
+        htmlContent ||
+          '<p style="font-family: Arial, sans-serif;">Add template HTML to see a preview.</p>',
+        samplePreviewValues
+      ),
+    [htmlContent]
+  )
 
   useEffect(() => {
     fetchTemplates()
@@ -78,6 +122,7 @@ export default function EmailTemplatesPage() {
     setHtmlContent('')
     setHeroImageUrl('')
     setEditingId(null)
+    setTestEmail('')
   }
 
   const fetchTemplates = async () => {
@@ -163,6 +208,42 @@ export default function EmailTemplatesPage() {
       setIsError(true)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleSendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      setMessage('Please enter a test email address')
+      setIsError(true)
+      return
+    }
+
+    setSendingTest(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/admin/email-templates/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testEmail: testEmail.trim(),
+          subject,
+          htmlContent,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+
+      setMessage(`Test email sent to ${data.sentTo}`)
+      setIsError(false)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to send test email')
+      setIsError(true)
+    } finally {
+      setSendingTest(false)
     }
   }
 
@@ -302,6 +383,26 @@ export default function EmailTemplatesPage() {
                 />
               </div>
 
+              <div className="rounded-md border p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Live Preview</p>
+                  <p className="text-xs text-muted-foreground">
+                    Preview uses sample values for placeholders.
+                  </p>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">Subject:</span>{' '}
+                  <span className="text-muted-foreground">{previewSubject}</span>
+                </div>
+                <div className="rounded border bg-background overflow-hidden">
+                  <iframe
+                    title="Template preview"
+                    srcDoc={previewHtml}
+                    className="w-full h-[360px] bg-white"
+                  />
+                </div>
+              </div>
+
               <div className="rounded-md border bg-muted/30 p-4">
                 <p className="text-sm font-medium mb-2">Available placeholders</p>
                 <p className="text-xs text-muted-foreground mb-3">
@@ -319,6 +420,31 @@ export default function EmailTemplatesPage() {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="rounded-md border p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Test Send</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sends this current subject and HTML content to a test inbox.
+                  </p>
+                </div>
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Input
+                    type="email"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    placeholder="your-email@example.com"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSendTestEmail}
+                    disabled={sendingTest || !subject.trim() || !htmlContent.trim()}
+                  >
+                    {sendingTest ? 'Sending...' : 'Send Test Email'}
+                  </Button>
                 </div>
               </div>
 
