@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+import Image from 'next/image'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -566,9 +567,13 @@ export default function EmailTemplatesPage() {
                 <Label htmlFor="template-hero-file">Hero Image (optional)</Label>
                 {effectiveHeroImagePreviewUrl && (
                   <div className="rounded-md border p-2 bg-muted/20 max-w-sm">
-                    <img
+                    <Image
                       src={effectiveHeroImagePreviewUrl}
                       alt="Hero image preview"
+                      width={1200}
+                      height={675}
+                      unoptimized
+                      loader={({ src }) => src}
                       className="w-full h-auto rounded"
                     />
                   </div>
