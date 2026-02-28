@@ -191,6 +191,7 @@ export default function EmailTemplatesPage() {
   const [heroImageUrl, setHeroImageUrl] = useState('')
   const [heroImagePreviewUrl, setHeroImagePreviewUrl] = useState('')
   const [heroImageFileName, setHeroImageFileName] = useState('')
+  const [heroImageInputKey, setHeroImageInputKey] = useState(0)
   const effectiveHeroImagePreviewUrl = heroImagePreviewUrl || heroImageUrl
   const [guidedFields, setGuidedFields] = useState<GuidedTemplateFields>(defaultGuidedFields)
   const previewSubject = useMemo(
@@ -247,6 +248,7 @@ export default function EmailTemplatesPage() {
     setHeroImageUrl('')
     setHeroImagePreviewUrl('')
     setHeroImageFileName('')
+    setHeroImageInputKey((prev) => prev + 1)
     setEditingId(null)
     setTestEmail('')
     setTestSendMessage('')
@@ -273,7 +275,7 @@ export default function EmailTemplatesPage() {
   }
 
   const openEditForm = (template: EmailTemplate) => {
-    setEditorMode('guided')
+    setEditorMode('raw')
     setEditingId(template.id)
     setName(template.name)
     setTemplateType(template.templateType)
@@ -374,6 +376,7 @@ export default function EmailTemplatesPage() {
           testEmail: testEmail.trim(),
           subject,
           htmlContent,
+          heroImageUrl: heroImageUrl || undefined,
         }),
       })
 
@@ -405,6 +408,9 @@ export default function EmailTemplatesPage() {
     setMessage('')
     setHeroImageFileName(file.name)
     const localPreviewUrl = URL.createObjectURL(file)
+    if (heroImagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(heroImagePreviewUrl)
+    }
     setHeroImagePreviewUrl(localPreviewUrl)
 
     try {
@@ -434,6 +440,16 @@ export default function EmailTemplatesPage() {
     } finally {
       setUploadingHeroImage(false)
     }
+  }
+
+  const handleRemoveHeroImage = () => {
+    if (heroImagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(heroImagePreviewUrl)
+    }
+    setHeroImageUrl('')
+    setHeroImagePreviewUrl('')
+    setHeroImageFileName('')
+    setHeroImageInputKey((prev) => prev + 1)
   }
 
   const handleDelete = async (id: string) => {
@@ -482,7 +498,7 @@ export default function EmailTemplatesPage() {
             <CardTitle>{editingId ? 'Edit Email Template' : 'Create Email Template'}</CardTitle>
             <CardDescription>
               {editingId
-                ? 'Update subject, body, and hero image URL for this template'
+                ? 'Update subject, body, and hero image for this template'
                 : 'Create a new invitation or thank-you email template'}
             </CardDescription>
           </CardHeader>
@@ -557,8 +573,15 @@ export default function EmailTemplatesPage() {
                     />
                   </div>
                 )}
-                <div className="flex items-center gap-2">
+                {heroImageUrl.includes('.private.blob.vercel-storage.com') && (
+                  <p className="text-xs text-muted-foreground">
+                    Stored in a private blob. Browser preview may be unavailable outside authenticated
+                    contexts.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
+                    key={heroImageInputKey}
                     id="template-hero-file"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -570,6 +593,16 @@ export default function EmailTemplatesPage() {
                       void handleHeroImageUpload(file)
                     }}
                   />
+                  {(heroImageUrl || heroImagePreviewUrl) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRemoveHeroImage}
+                      disabled={uploadingHeroImage}
+                    >
+                      Remove image
+                    </Button>
+                  )}
                   {uploadingHeroImage && (
                     <span className="text-xs text-muted-foreground">Uploading...</span>
                   )}
@@ -844,7 +877,7 @@ export default function EmailTemplatesPage() {
                   {template.heroImageUrl && (
                     <div>
                       <span className="font-medium">Hero Image:</span>{' '}
-                      <span className="text-muted-foreground truncate">{template.heroImageUrl}</span>
+                      <Badge variant="secondary">Attached</Badge>
                     </div>
                   )}
                   <div>

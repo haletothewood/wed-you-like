@@ -66,7 +66,11 @@ export class SendInviteEmail {
     }
 
     const renderedSubject = TemplateRenderer.render(template.subject, variables)
-    const renderedHtml = TemplateRenderer.render(template.htmlContent, variables)
+    const renderedHtml = TemplateRenderer.renderWithHeroImage(
+      template.htmlContent,
+      variables,
+      template.heroImageUrl
+    )
 
     await this.emailService.sendEmail({
       to: primaryGuest.email,
