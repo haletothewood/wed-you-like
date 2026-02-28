@@ -96,13 +96,17 @@ export async function POST(request: Request) {
       html: renderedHtml,
     })
 
-    await emailCampaignEventRepository.logEvent({
-      eventType: 'test_send',
-      status: 'sent',
-      templateId: templateIdForLog,
-      recipientEmail: emailValidation.data,
-      subject: subjectForLog,
-    })
+    try {
+      await emailCampaignEventRepository.logEvent({
+        eventType: 'test_send',
+        status: 'sent',
+        templateId: templateIdForLog,
+        recipientEmail: emailValidation.data,
+        subject: subjectForLog,
+      })
+    } catch (loggingError) {
+      console.error('Failed to log test send success:', loggingError)
+    }
 
     return NextResponse.json({
       success: true,
