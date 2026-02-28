@@ -372,7 +372,6 @@ export default function EmailTemplatesPage() {
       const blob = await upload(file.name, file, {
         access: 'public',
         handleUploadUrl: '/api/admin/uploads/hero-image',
-        multipart: true,
       })
 
       setHeroImageUrl(blob.url)
