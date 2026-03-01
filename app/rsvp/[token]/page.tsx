@@ -76,6 +76,7 @@ export default function RSVP() {
   const [submitted, setSubmitted] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [missingMealSelectionKeys, setMissingMealSelectionKeys] = useState<string[]>([])
 
   const jsConfetti = useRef<JSConfetti | null>(null)
 
@@ -132,8 +133,10 @@ export default function RSVP() {
     e.preventDefault()
     setValidationErrors([])
     setSubmitError(null)
+    setMissingMealSelectionKeys([])
 
     const nextValidationErrors: string[] = []
+    const nextMissingMealSelectionKeys: string[] = []
 
     if (isAttending === null) {
       nextValidationErrors.push('Please choose whether you are attending.')
@@ -145,6 +148,21 @@ export default function RSVP() {
 
     if (isAttending && plusOneName.trim() && !attendingGuests.some((g) => g.guestId === 'PLUS_ONE')) {
       nextValidationErrors.push('You entered a plus one name. Click Add to include them.')
+    }
+
+    if (isAttending && invite) {
+      const requiredCourseTypes = Array.from(new Set(invite.mealOptions.map((meal) => meal.courseType)))
+      for (const guest of attendingGuests) {
+        const guestSelections = mealSelections[guest.guestId] || {}
+        for (const courseType of requiredCourseTypes) {
+          if (!guestSelections[courseType]) {
+            nextMissingMealSelectionKeys.push(`${guest.guestId}:${courseType}`)
+            const courseLabel =
+              courseType === 'STARTER' ? 'starter' : courseType === 'MAIN' ? 'main course' : 'dessert'
+            nextValidationErrors.push(`Select a ${courseLabel} for ${guest.name}.`)
+          }
+        }
+      }
     }
 
     if (isAttending && invite) {
@@ -165,6 +183,7 @@ export default function RSVP() {
 
     if (nextValidationErrors.length > 0) {
       setValidationErrors(nextValidationErrors)
+      setMissingMealSelectionKeys(nextMissingMealSelectionKeys)
       return
     }
 
@@ -221,7 +240,19 @@ export default function RSVP() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to submit RSVP')
+        const message = data.error || 'Failed to submit RSVP'
+        const parsedErrors = message
+          .split(',')
+          .map((item: string) => item.trim())
+          .filter(Boolean)
+
+        if (parsedErrors.length > 1) {
+          setValidationErrors(parsedErrors)
+          setSubmitError('Please review the fields below and try again.')
+          return
+        }
+
+        throw new Error(message)
       }
 
       setSubmitted(true)
@@ -246,6 +277,12 @@ export default function RSVP() {
   }
 
   const handleMealSelection = (guestId: string, courseType: string, mealOptionId: string) => {
+    setValidationErrors([])
+    setSubmitError(null)
+    setMissingMealSelectionKeys((prev) =>
+      prev.filter((key) => key !== `${guestId}:${courseType}`)
+    )
+
     setMealSelections((prev) => ({
       ...prev,
       [guestId]: {
@@ -256,6 +293,8 @@ export default function RSVP() {
   }
 
   const toggleMultipleChoice = (questionId: string, option: string) => {
+    setValidationErrors([])
+    setSubmitError(null)
     setMultipleChoiceSelections((prev) => {
       const current = prev[questionId] || []
       const isSelected = current.includes(option)
@@ -269,6 +308,8 @@ export default function RSVP() {
   }
 
   const toggleGuest = (guestId: string) => {
+    setValidationErrors([])
+    setSubmitError(null)
     setAttendingGuests((prev) => {
       const isAttending = prev.some(g => g.guestId === guestId)
       if (isAttending) {
@@ -289,6 +330,8 @@ export default function RSVP() {
 
   const addPlusOne = () => {
     if (!plusOneName.trim() || !invite) return
+    setValidationErrors([])
+    setSubmitError(null)
     setAttendingGuests((prev) => [...prev, {
       guestId: 'PLUS_ONE',
       name: plusOneName,
@@ -298,6 +341,8 @@ export default function RSVP() {
   }
 
   const removePlusOne = () => {
+    setValidationErrors([])
+    setSubmitError(null)
     setAttendingGuests((prev) => prev.filter(g => g.guestId !== 'PLUS_ONE'))
     setMealSelections((prev) => {
       const updated = { ...prev }
@@ -448,6 +493,8 @@ export default function RSVP() {
                 onClick={() => {
                   setIsAttending(true)
                   setValidationErrors([])
+                  setSubmitError(null)
+                  setMissingMealSelectionKeys([])
                 }}
               >
                 Yes, I&apos;ll be there
@@ -459,6 +506,8 @@ export default function RSVP() {
                 onClick={() => {
                   setIsAttending(false)
                   setValidationErrors([])
+                  setSubmitError(null)
+                  setMissingMealSelectionKeys([])
                 }}
               >
                 Sorry, I can&apos;t make it
@@ -573,11 +622,17 @@ export default function RSVP() {
                         {starters.length > 0 && (
                           <div className="space-y-2">
                             <Label>Starter</Label>
-                            <Select
+                          <Select
                               value={mealSelections[guest.guestId]?.STARTER}
                               onValueChange={(value) => handleMealSelection(guest.guestId, 'STARTER', value)}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger
+                                className={
+                                  missingMealSelectionKeys.includes(`${guest.guestId}:STARTER`)
+                                    ? 'border-destructive focus:ring-destructive'
+                                    : ''
+                                }
+                              >
                                 <SelectValue placeholder="Select starter" />
                               </SelectTrigger>
                               <SelectContent>
@@ -594,11 +649,17 @@ export default function RSVP() {
                         {mains.length > 0 && (
                           <div className="space-y-2">
                             <Label>Main Course</Label>
-                            <Select
+                          <Select
                               value={mealSelections[guest.guestId]?.MAIN}
                               onValueChange={(value) => handleMealSelection(guest.guestId, 'MAIN', value)}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger
+                                className={
+                                  missingMealSelectionKeys.includes(`${guest.guestId}:MAIN`)
+                                    ? 'border-destructive focus:ring-destructive'
+                                    : ''
+                                }
+                              >
                                 <SelectValue placeholder="Select main" />
                               </SelectTrigger>
                               <SelectContent>
@@ -615,11 +676,17 @@ export default function RSVP() {
                         {desserts.length > 0 && (
                           <div className="space-y-2">
                             <Label>Dessert</Label>
-                            <Select
+                          <Select
                               value={mealSelections[guest.guestId]?.DESSERT}
                               onValueChange={(value) => handleMealSelection(guest.guestId, 'DESSERT', value)}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger
+                                className={
+                                  missingMealSelectionKeys.includes(`${guest.guestId}:DESSERT`)
+                                    ? 'border-destructive focus:ring-destructive'
+                                    : ''
+                                }
+                              >
                                 <SelectValue placeholder="Select dessert" />
                               </SelectTrigger>
                               <SelectContent>

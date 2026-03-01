@@ -62,7 +62,7 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 - [x] `DONE` Day-of photo-share email campaign
 - [ ] `TODO` Add invite reminders for non-responders
 - [ ] `TODO` Add invite list filters/search (`sent`, `responded`, `attending`, name/email)
-- [ ] `TODO` Improve RSVP UX polish (clear validation messages, fewer alerts)
+- [x] `DONE` Improve RSVP UX polish (clear validation messages, inline meal selection highlighting)
 - [ ] `TODO` Bug bash pass across admin + RSVP flows
 - [ ] `TODO` Add/expand tests for fixed bugs
 
