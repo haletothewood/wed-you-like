@@ -24,8 +24,14 @@ This project is optimized for a real wedding timeline: reliable enough, protecte
 - [x] Custom RSVP questions (text/single/multi choice)
 - [x] Dietary requirements
 - [x] Email sending for invites (Resend + template variables)
+- [x] Day-of photo-share campaign emails from Reports
 - [x] Wedding settings management
 - [x] Reporting dashboard + CSV exports
+- [x] Email template editor with guided + raw HTML modes
+- [x] Email template live preview and test-send
+- [x] Signed admin hero image uploads
+- [x] Dedicated guest photo upload page (`/photos/[token]`)
+- [x] Signed guest photo uploads (invite-token authorized)
 - [x] Automated tests for core domain/use-cases/validation
 
 ## Lean Security and Cost Guardrails
@@ -47,10 +53,13 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 
 ### Phase 1: Features and Fixes (Now)
 
-- [ ] `TODO` Email templates: create
-- [ ] `TODO` Email templates: edit
-- [ ] `TODO` Email templates: preview
-- [ ] `TODO` Email templates: test-send
+- [x] `DONE` Email templates: create
+- [x] `DONE` Email templates: edit
+- [x] `DONE` Email templates: preview
+- [x] `DONE` Email templates: test-send
+- [x] `DONE` Hero image upload in template editor
+- [x] `DONE` Dedicated photo upload page (`/photos/[token]`)
+- [x] `DONE` Day-of photo-share email campaign
 - [ ] `TODO` Add invite reminders for non-responders
 - [ ] `TODO` Add invite list filters/search (`sent`, `responded`, `attending`, name/email)
 - [ ] `TODO` Improve RSVP UX polish (clear validation messages, fewer alerts)
@@ -146,10 +155,13 @@ Production deploys are now gated behind GitHub Actions:
 - `TURSO_AUTH_TOKEN`
 - `RESEND_API_KEY`
 - `BASE_URL`
-- `BLOB_HERO_IMAGE_ACCESS`
+- `BLOB_READ_WRITE_TOKEN`
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
+
+Optional:
+- `BLOB_HERO_IMAGE_ACCESS` (`public` or `private`; defaults to `private`)
 
 ### Rollback
 
