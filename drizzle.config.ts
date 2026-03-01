@@ -7,6 +7,7 @@ export default {
   out: './src/infrastructure/database/migrations',
   dialect: 'sqlite',
   dbCredentials: {
-    url: 'file:./data/sqlite.db',
+    url: process.env.TURSO_DATABASE_URL || 'file:./data/sqlite.db',
+    authToken: process.env.TURSO_AUTH_TOKEN,
   },
 } satisfies Config
