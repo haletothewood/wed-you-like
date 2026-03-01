@@ -63,6 +63,8 @@ export default function InvitesAdmin() {
     'all' | 'plus_one_allowed' | 'has_children'
   >('all')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest')
+  const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([])
+  const [bulkSending, setBulkSending] = useState(false)
 
   // Individual form state
   const [guestName, setGuestName] = useState('')
@@ -341,6 +343,145 @@ export default function InvitesAdmin() {
       }
     })
   }, [invites, searchQuery, sentFilter, responseFilter, attendanceFilter, inviteShapeFilter, sortBy])
+
+  const filteredInviteIds = useMemo(
+    () => new Set(filteredInvites.map((invite) => invite.id)),
+    [filteredInvites]
+  )
+
+  const selectedInvites = useMemo(
+    () => invites.filter((invite) => selectedInviteIds.includes(invite.id)),
+    [invites, selectedInviteIds]
+  )
+
+  const selectedFilteredCount = useMemo(
+    () => selectedInviteIds.filter((id) => filteredInviteIds.has(id)).length,
+    [selectedInviteIds, filteredInviteIds]
+  )
+
+  const selectedNonResponderIds = useMemo(
+    () =>
+      selectedInvites
+        .filter((invite) => !invite.rsvpStatus.hasResponded)
+        .map((invite) => invite.id),
+    [selectedInvites]
+  )
+
+  const toggleInviteSelection = (inviteId: string) => {
+    setSelectedInviteIds((prev) =>
+      prev.includes(inviteId) ? prev.filter((id) => id !== inviteId) : [...prev, inviteId]
+    )
+  }
+
+  const toggleSelectAllFiltered = () => {
+    const allFilteredSelected =
+      filteredInvites.length > 0 &&
+      filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
+
+    if (allFilteredSelected) {
+      setSelectedInviteIds((prev) => prev.filter((id) => !filteredInviteIds.has(id)))
+      return
+    }
+
+    setSelectedInviteIds((prev) => {
+      const next = new Set(prev)
+      for (const invite of filteredInvites) {
+        next.add(invite.id)
+      }
+      return Array.from(next)
+    })
+  }
+
+  const handleBulkSendReminders = async () => {
+    if (selectedNonResponderIds.length === 0) {
+      alert('Select at least one non-responder invite to send reminders.')
+      return
+    }
+
+    if (!confirm(`Send reminder emails to ${selectedNonResponderIds.length} invite(s)?`)) {
+      return
+    }
+
+    setBulkSending(true)
+    let successCount = 0
+    let failureCount = 0
+
+    for (const inviteId of selectedNonResponderIds) {
+      try {
+        const response = await fetch(`/api/admin/invites/${inviteId}/send-email`, {
+          method: 'POST',
+        })
+        if (response.ok) {
+          successCount++
+        } else {
+          failureCount++
+        }
+      } catch {
+        failureCount++
+      }
+    }
+
+    setBulkSending(false)
+    await fetchInvites()
+    alert(`Reminder send complete. Success: ${successCount}. Failed: ${failureCount}.`)
+  }
+
+  const escapeCsvValue = (value: string): string => {
+    if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`
+    }
+    return value
+  }
+
+  const handleExportSelectedCsv = () => {
+    if (selectedInvites.length === 0) {
+      alert('Select at least one invite to export.')
+      return
+    }
+
+    const header = [
+      'invite_id',
+      'group_or_name',
+      'primary_email',
+      'adults_count',
+      'children_count',
+      'plus_one_allowed',
+      'sent',
+      'has_responded',
+      'is_attending',
+      'adults_attending',
+      'children_attending',
+    ]
+
+    const rows = selectedInvites.map((invite) => {
+      const primaryEmail = invite.guests.find((g) => g.email?.trim())?.email || ''
+      const groupOrName = invite.groupName || invite.guests[0]?.name || 'Unknown'
+      return [
+        invite.id,
+        groupOrName,
+        primaryEmail,
+        String(invite.adultsCount),
+        String(invite.childrenCount),
+        String(invite.plusOneAllowed),
+        String(Boolean(invite.sentAt)),
+        String(invite.rsvpStatus.hasResponded),
+        String(invite.rsvpStatus.isAttending ?? ''),
+        String(invite.rsvpStatus.adultsAttending ?? ''),
+        String(invite.rsvpStatus.childrenAttending ?? ''),
+      ].map(escapeCsvValue)
+    })
+
+    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `selected-invites-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   if (loading) {
     return <LoadingSpinner text="Loading invites..." />
@@ -664,10 +805,55 @@ export default function InvitesAdmin() {
               </Button>
             </div>
 
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleSelectAllFiltered}
+                disabled={filteredInvites.length === 0}
+              >
+                {filteredInvites.length > 0 &&
+                filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
+                  ? 'Clear Filtered Selection'
+                  : 'Select All Filtered'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleBulkSendReminders}
+                disabled={bulkSending || selectedNonResponderIds.length === 0}
+              >
+                {bulkSending
+                  ? 'Sending Reminders...'
+                  : `Send Reminders (${selectedNonResponderIds.length})`}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExportSelectedCsv}
+                disabled={selectedInviteIds.length === 0}
+              >
+                Export Selected CSV ({selectedInviteIds.length})
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Selected in current view: {selectedFilteredCount}
+              </span>
+            </div>
+
             <div className="overflow-x-auto">
               <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        filteredInvites.length > 0 &&
+                        filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
+                      }
+                      onCheckedChange={toggleSelectAllFiltered}
+                      aria-label="Select all filtered invites"
+                    />
+                  </TableHead>
                   <TableHead>Name/Group</TableHead>
                   <TableHead>Guests</TableHead>
                   <TableHead>Count</TableHead>
@@ -680,6 +866,13 @@ export default function InvitesAdmin() {
               <TableBody>
                 {filteredInvites.map((invite) => (
                   <TableRow key={invite.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedInviteIds.includes(invite.id)}
+                        onCheckedChange={() => toggleInviteSelection(invite.id)}
+                        aria-label={`Select invite ${invite.groupName || invite.guests[0]?.name || invite.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {invite.groupName || invite.guests[0]?.name || 'Unknown'}
                       {invite.plusOneAllowed && (
