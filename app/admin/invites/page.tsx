@@ -797,7 +797,7 @@ export default function InvitesAdmin() {
                     <TableCell>
                       {invite.rsvpStatus.hasResponded ? (
                         <Badge variant="outline">
-                          {(invite.rsvpStatus.adultsAttending || 0) + (invite.rsvpStatus.childrenAttending || 0)}
+                          {(invite.rsvpStatus.adultsAttending ?? 0) + (invite.rsvpStatus.childrenAttending ?? 0)}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
