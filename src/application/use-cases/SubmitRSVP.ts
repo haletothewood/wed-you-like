@@ -7,6 +7,8 @@ import type { RSVPRepository } from '@/domain/repositories/RSVPRepository'
 import type { MealSelectionRepository } from '@/domain/repositories/MealSelectionRepository'
 import type { QuestionResponseRepository } from '@/domain/repositories/QuestionResponseRepository'
 import type { GuestRepository } from '@/domain/repositories/GuestRepository'
+import type { MealOptionRepository } from '@/domain/repositories/MealOptionRepository'
+import type { CustomQuestionRepository } from '@/domain/repositories/CustomQuestionRepository'
 import type { CourseType } from '@/domain/entities/MealOption'
 
 export interface MealSelectionInput {
@@ -43,7 +45,9 @@ export class SubmitRSVP {
     private rsvpRepository: RSVPRepository,
     private mealSelectionRepository: MealSelectionRepository,
     private questionResponseRepository: QuestionResponseRepository,
-    private guestRepository?: GuestRepository
+    private guestRepository?: GuestRepository,
+    private mealOptionRepository?: MealOptionRepository,
+    private customQuestionRepository?: CustomQuestionRepository
   ) {}
 
   async execute(request: SubmitRSVPRequest): Promise<SubmitRSVPResponse> {
@@ -127,6 +131,52 @@ export class SubmitRSVP {
     }
 
     if (request.isAttending && request.mealSelections) {
+      const inviteGuestIds = new Set(invite.guests.map((guest) => guest.id))
+      const allowedGuestIds = new Set(inviteGuestIds)
+      if (plusOneGuestId) {
+        allowedGuestIds.add(plusOneGuestId)
+      }
+
+      const seenGuestCoursePairs = new Set<string>()
+
+      if (this.mealOptionRepository) {
+        for (const selection of request.mealSelections) {
+          const guestId =
+            selection.guestId === 'PLUS_ONE'
+              ? plusOneGuestId
+              : selection.guestId
+
+          if (!guestId) {
+            throw new Error('Invalid plus-one meal selection')
+          }
+
+          if (!allowedGuestIds.has(guestId)) {
+            throw new Error('Meal selection contains a guest not in this invite')
+          }
+
+          const guestCourseKey = `${guestId}:${selection.courseType}`
+          if (seenGuestCoursePairs.has(guestCourseKey)) {
+            throw new Error('Duplicate meal selection for guest course')
+          }
+          seenGuestCoursePairs.add(guestCourseKey)
+
+          const mealOption = await this.mealOptionRepository.findById(
+            selection.mealOptionId
+          )
+          if (!mealOption) {
+            throw new Error('Meal selection contains an unknown meal option')
+          }
+
+          if (!mealOption.isAvailable) {
+            throw new Error('Meal selection contains an unavailable meal option')
+          }
+
+          if (mealOption.courseType !== selection.courseType) {
+            throw new Error('Meal selection course type does not match meal option')
+          }
+        }
+      }
+
       for (const guest of invite.guests) {
         await this.mealSelectionRepository.deleteByGuestId(guest.id)
       }
@@ -149,6 +199,17 @@ export class SubmitRSVP {
     }
 
     if (request.isAttending && request.questionResponses) {
+      if (this.customQuestionRepository) {
+        const allowedQuestions = await this.customQuestionRepository.findAll()
+        const allowedQuestionIds = new Set(allowedQuestions.map((q) => q.id))
+
+        for (const response of request.questionResponses) {
+          if (!allowedQuestionIds.has(response.questionId)) {
+            throw new Error('Question response contains an unknown question')
+          }
+        }
+      }
+
       await this.questionResponseRepository.deleteByRSVPId(rsvpId)
 
       const questionResponses = request.questionResponses
