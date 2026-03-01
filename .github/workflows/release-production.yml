@@ -29,9 +29,24 @@ jobs:
       - name: Install Turso CLI
         shell: bash
         run: |
-          curl -sSfL https://get.tur.so/install.sh | bash
-          echo "$HOME/.turso" >> "$GITHUB_PATH"
-          "$HOME/.turso/turso" --version
+          set -euo pipefail
+          ASSET_URL="$(
+            curl -fsSL https://api.github.com/repos/tursodatabase/homebrew-tap/releases/latest \
+              | jq -r '.assets[] | select(.name | test("^homebrew-tap_.*linux.*(x86_64|amd64).*\\.tar\\.gz$"; "i")) | .browser_download_url' \
+              | head -n1
+          )"
+
+          if [[ -z "$ASSET_URL" ]]; then
+            echo "Failed to resolve Turso CLI release asset URL"
+            exit 1
+          fi
+
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "$ASSET_URL" -o /tmp/turso.tar.gz
+          tar -xzf /tmp/turso.tar.gz -C "$HOME/.local/bin" turso
+          chmod +x "$HOME/.local/bin/turso"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/turso" --version
 
       - name: Backup production database before migration
         env:
