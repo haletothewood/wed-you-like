@@ -74,6 +74,8 @@ export default function RSVP() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const jsConfetti = useRef<JSConfetti | null>(null)
 
@@ -128,14 +130,41 @@ export default function RSVP() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setValidationErrors([])
+    setSubmitError(null)
+
+    const nextValidationErrors: string[] = []
 
     if (isAttending === null) {
-      alert('Please indicate if you will be attending')
-      return
+      nextValidationErrors.push('Please choose whether you are attending.')
     }
 
-    if (isAttending && invite?.plusOneAllowed && plusOneName.trim() && attendingGuests.length === 1) {
-      alert('Please add your plus one before submitting')
+    if (isAttending && attendingGuests.length === 0) {
+      nextValidationErrors.push('Select at least one guest who is attending.')
+    }
+
+    if (isAttending && plusOneName.trim() && !attendingGuests.some((g) => g.guestId === 'PLUS_ONE')) {
+      nextValidationErrors.push('You entered a plus one name. Click Add to include them.')
+    }
+
+    if (isAttending && invite) {
+      for (const question of invite.customQuestions) {
+        if (!question.isRequired) continue
+        if (question.questionType === 'MULTIPLE_CHOICE') {
+          if ((multipleChoiceSelections[question.id] || []).length === 0) {
+            nextValidationErrors.push(`Please answer required question: ${question.questionText}`)
+          }
+          continue
+        }
+
+        if (!(questionResponses[question.id] || '').trim()) {
+          nextValidationErrors.push(`Please answer required question: ${question.questionText}`)
+        }
+      }
+    }
+
+    if (nextValidationErrors.length > 0) {
+      setValidationErrors(nextValidationErrors)
       return
     }
 
@@ -210,7 +239,7 @@ export default function RSVP() {
         })
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to submit RSVP')
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit RSVP')
     } finally {
       setSubmitting(false)
     }
@@ -336,6 +365,13 @@ export default function RSVP() {
   const starters = invite.mealOptions.filter((m) => m.courseType === 'STARTER')
   const mains = invite.mealOptions.filter((m) => m.courseType === 'MAIN')
   const desserts = invite.mealOptions.filter((m) => m.courseType === 'DESSERT')
+  const hasPlusOneAdded = attendingGuests.some((g) => g.guestId === 'PLUS_ONE')
+  const totalSteps = 3
+  let completedSteps = 0
+  if (isAttending !== null) completedSteps++
+  if (isAttending && attendingGuests.length > 0) completedSteps++
+  if (isAttending && validationErrors.length === 0) completedSteps++
+  if (isAttending === false) completedSteps = totalSteps
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent p-4 py-12">
@@ -345,6 +381,9 @@ export default function RSVP() {
             <div className="text-6xl mb-4">💒</div>
             <CardTitle className="text-3xl">Wedding RSVP</CardTitle>
             <CardDescription className="text-lg">For: {displayName}</CardDescription>
+            <div className="pt-2 text-sm text-muted-foreground">
+              Step {Math.min(completedSteps + 1, totalSteps)} of {totalSteps}
+            </div>
           </CardHeader>
         </Card>
 
@@ -360,10 +399,45 @@ export default function RSVP() {
           </Alert>
         )}
 
+        {(validationErrors.length > 0 || submitError) && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {submitError && <p>{submitError}</p>}
+              {validationErrors.length > 0 && (
+                <ul className="list-disc pl-5">
+                  {validationErrors.map((message, idx) => (
+                    <li key={`${message}-${idx}`}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isAttending && (
+          <Alert>
+            <AlertDescription>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant={attendingGuests.length > 0 ? 'default' : 'secondary'}>
+                  Guests: {attendingGuests.length}
+                </Badge>
+                {invite.plusOneAllowed && (
+                  <Badge variant={hasPlusOneAdded ? 'default' : 'secondary'}>
+                    Plus one: {hasPlusOneAdded ? 'Added' : 'Optional'}
+                  </Badge>
+                )}
+                <Badge variant={validationErrors.length === 0 ? 'default' : 'destructive'}>
+                  Validation: {validationErrors.length === 0 ? 'Ready to submit' : 'Needs attention'}
+                </Badge>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Will you be attending?</CardTitle>
+              <CardTitle>1. Will you be attending?</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
               <Button
@@ -371,7 +445,10 @@ export default function RSVP() {
                 size="lg"
                 variant={isAttending === true ? 'default' : 'outline'}
                 className={isAttending === true ? 'bg-success hover:bg-success/90' : ''}
-                onClick={() => setIsAttending(true)}
+                onClick={() => {
+                  setIsAttending(true)
+                  setValidationErrors([])
+                }}
               >
                 Yes, I&apos;ll be there
               </Button>
@@ -379,7 +456,10 @@ export default function RSVP() {
                 type="button"
                 size="lg"
                 variant={isAttending === false ? 'destructive' : 'outline'}
-                onClick={() => setIsAttending(false)}
+                onClick={() => {
+                  setIsAttending(false)
+                  setValidationErrors([])
+                }}
               >
                 Sorry, I can&apos;t make it
               </Button>
@@ -390,7 +470,7 @@ export default function RSVP() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Who will be attending?</CardTitle>
+                  <CardTitle>2. Who will be attending?</CardTitle>
                   <CardDescription>
                     {invite.groupName ?
                       'Select which guests from your group will attend' :
@@ -661,8 +741,14 @@ export default function RSVP() {
 
           <Card className="bg-muted/30">
             <CardContent className="pt-6">
-              <Button type="submit" disabled={submitting} size="lg" className="w-full">
-                {submitting ? 'Submitting...' : 'Submit RSVP'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                size="lg"
+                className="w-full"
+                aria-busy={submitting}
+              >
+                {submitting ? 'Saving your RSVP...' : 'Submit RSVP'}
               </Button>
             </CardContent>
           </Card>
