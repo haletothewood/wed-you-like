@@ -1,0 +1,67 @@
+name: Migration Guard
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine diff base
+        id: diff_base
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "base=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+            git fetch origin "${{ github.base_ref }}" --depth=1
+          else
+            echo "base=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate schema changes include migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ steps.diff_base.outputs.base }}"
+          CHANGED_FILES="$(git diff --name-only "$BASE"...HEAD)"
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          SCHEMA_CHANGED=0
+          MIGRATION_CHANGED=0
+          JOURNAL_CHANGED=0
+
+          if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/schema.ts$'; then
+            SCHEMA_CHANGED=1
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/migrations/.*\.sql$'; then
+            MIGRATION_CHANGED=1
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/migrations/meta/_journal.json$'; then
+            JOURNAL_CHANGED=1
+          fi
+
+          if [[ "$SCHEMA_CHANGED" -eq 1 && "$MIGRATION_CHANGED" -eq 0 ]]; then
+            echo "::error::schema.ts changed but no SQL migration file was committed."
+            echo "Run: npm run db:generate and commit src/infrastructure/database/migrations/*.sql"
+            exit 1
+          fi
+
+          if [[ "$MIGRATION_CHANGED" -eq 1 && "$JOURNAL_CHANGED" -eq 0 ]]; then
+            echo "::error::Migration SQL changed but migrations/meta/_journal.json was not updated."
+            echo "Run: npm run db:generate and commit updated migration metadata."
+            exit 1
+          fi
+
+          echo "Migration guard passed."

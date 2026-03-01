@@ -1,0 +1,85 @@
+name: Release Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Turso CLI
+        shell: bash
+        run: |
+          curl -sSfL https://get.tur.so/install.sh | bash
+          echo "$HOME/.turso" >> "$GITHUB_PATH"
+          "$HOME/.turso/turso" --version
+
+      - name: Backup production database before migration
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p backups
+          BACKUP_FILE="backups/turso-pre-migrate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sql"
+          turso db shell "$TURSO_DATABASE_URL" ".dump" > "$BACKUP_FILE"
+          ls -lh "$BACKUP_FILE"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turso-pre-migrate-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backups/*.sql
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Apply database migrations
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: npm run db:migrate
+
+      - name: Build app
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          BLOB_HERO_IMAGE_ACCESS: ${{ secrets.BLOB_HERO_IMAGE_ACCESS }}
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Deploy to Vercel production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          BLOB_HERO_IMAGE_ACCESS: ${{ secrets.BLOB_HERO_IMAGE_ACCESS }}
+          NODE_ENV: production
+        run: |
+          npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx vercel build --prod --token="$VERCEL_TOKEN"
+          npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
