@@ -7,6 +7,7 @@ import {
   tableAssignments,
   tables,
 } from '@/infrastructure/database/schema'
+import { toCsvRow } from '@/infrastructure/csv/serialize'
 import { eq } from 'drizzle-orm'
 
 export async function GET() {
@@ -37,7 +38,7 @@ export async function GET() {
       .leftJoin(tables, eq(tableAssignments.tableId, tables.id))
 
     const rows: string[] = []
-    rows.push('Guest Name,Table,Starter,Main Course,Dessert')
+    rows.push(toCsvRow(['Guest Name', 'Table', 'Starter', 'Main Course', 'Dessert']))
 
     const mealCounts: Record<string, { name: string; courseType: string; count: number }> = {}
 
@@ -57,15 +58,7 @@ export async function GET() {
           ? `Table ${tableAssignment.tableNumber}`
           : 'Unassigned'
 
-        const row = [
-          `"${guest.name}"`,
-          `"${tableNumber}"`,
-          `"${starter}"`,
-          `"${main}"`,
-          `"${dessert}"`,
-        ].join(',')
-
-        rows.push(row)
+        rows.push(toCsvRow([guest.name, tableNumber, starter, main, dessert]))
 
         if (starter) {
           const key = `STARTER:${starter}`
@@ -86,8 +79,8 @@ export async function GET() {
     }
 
     rows.push('')
-    rows.push('MEAL COUNTS SUMMARY')
-    rows.push('Course,Meal Option,Count')
+    rows.push(toCsvRow(['MEAL COUNTS SUMMARY']))
+    rows.push(toCsvRow(['Course', 'Meal Option', 'Count']))
 
     const courseOrder = { STARTER: 1, MAIN: 2, DESSERT: 3 }
     const sortedMeals = Object.values(mealCounts).sort((a, b) => {
@@ -105,7 +98,7 @@ export async function GET() {
           : meal.courseType === 'MAIN'
             ? 'Main'
             : 'Dessert'
-      rows.push(`${courseLabel},"${meal.name}",${meal.count}`)
+      rows.push(toCsvRow([courseLabel, meal.name, meal.count]))
     }
 
     const csv = rows.join('\n')

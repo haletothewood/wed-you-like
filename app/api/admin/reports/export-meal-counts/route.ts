@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/infrastructure/database/connection'
 import { mealSelections, mealOptions } from '@/infrastructure/database/schema'
+import { toCsvRow } from '@/infrastructure/csv/serialize'
 import { eq } from 'drizzle-orm'
 
 export async function GET() {
@@ -41,30 +42,24 @@ export async function GET() {
 
     // Build CSV
     const rows: string[] = []
-    rows.push('Course Type,Meal Option,Description,Guest Count')
+    rows.push(toCsvRow(['Course Type', 'Meal Option', 'Description', 'Guest Count']))
 
     for (const item of sortedMealCounts) {
       const courseLabel = item.courseType === 'STARTER' ? 'Starter' :
                          item.courseType === 'MAIN' ? 'Main Course' : 'Dessert'
-      const row = [
-        courseLabel,
-        `"${item.name}"`,
-        `"${item.description}"`,
-        item.count.toString(),
-      ].join(',')
-      rows.push(row)
+      rows.push(toCsvRow([courseLabel, item.name, item.description, item.count]))
     }
 
     // Add totals by course
     rows.push('')
-    rows.push('Summary by Course')
+    rows.push(toCsvRow(['Summary by Course']))
     const totals = { STARTER: 0, MAIN: 0, DESSERT: 0 }
     for (const item of sortedMealCounts) {
       totals[item.courseType as keyof typeof totals] += item.count
     }
-    rows.push(`Starters,${totals.STARTER}`)
-    rows.push(`Main Courses,${totals.MAIN}`)
-    rows.push(`Desserts,${totals.DESSERT}`)
+    rows.push(toCsvRow(['Starters', totals.STARTER]))
+    rows.push(toCsvRow(['Main Courses', totals.MAIN]))
+    rows.push(toCsvRow(['Desserts', totals.DESSERT]))
 
     const csv = rows.join('\n')
 
