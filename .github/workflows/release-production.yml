@@ -33,6 +33,25 @@ jobs:
           echo "$HOME/.turso" >> "$GITHUB_PATH"
           "$HOME/.turso/turso" --version
 
+      - name: Backup production database before migration
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p backups
+          BACKUP_FILE="backups/turso-pre-migrate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sql"
+          turso db shell "$TURSO_DATABASE_URL" ".dump" > "$BACKUP_FILE"
+          ls -lh "$BACKUP_FILE"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: turso-pre-migrate-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backups/*.sql
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Apply database migrations
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
