@@ -25,6 +25,7 @@ This project is optimized for a real wedding timeline: reliable enough, protecte
 - [x] Dietary requirements
 - [x] Email sending for invites (Resend + template variables)
 - [x] Day-of photo-share campaign emails from Reports
+- [x] RSVP reminder campaign for pending invites
 - [x] Wedding settings management
 - [x] Reporting dashboard + CSV exports
 - [x] Email template editor with guided + raw HTML modes
@@ -60,7 +61,7 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 - [x] `DONE` Hero image upload in template editor
 - [x] `DONE` Dedicated photo upload page (`/photos/[token]`)
 - [x] `DONE` Day-of photo-share email campaign
-- [ ] `TODO` Add invite reminders for non-responders
+- [x] `DONE` Add invite reminders for non-responders
 - [ ] `TODO` Add invite list filters/search (`sent`, `responded`, `attending`, name/email)
 - [ ] `TODO` Improve RSVP UX polish (clear validation messages, fewer alerts)
 - [ ] `TODO` Bug bash pass across admin + RSVP flows
@@ -95,6 +96,48 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 2. Move to table planning once RSVP collection features are stable.
 3. Pull in nice-to-haves only if they unblock real planning/admin work.
 4. Complete pre-launch guardrails right before sharing links publicly.
+
+## Wedding Operations Timeline (Invites -> RSVPs -> Reports)
+
+Use this timeline as the default runbook.
+
+### T-8 to T-6 Weeks: Setup
+
+1. Configure wedding settings (date/time/venue, RSVP deadline, registry, notes).
+2. Finalize meal options and custom questions.
+3. Import or create all invites (individuals/groups).
+4. Verify active invite email template content and placeholders.
+
+### T-6 Weeks: Send Invites
+
+1. Send invite emails from Invite management.
+2. Confirm each invite has `sentAt` populated.
+3. Spot-check a few personal RSVP links.
+
+### T-5 to T-2 Weeks: Collect RSVPs
+
+1. Track response progress in Reports:
+   - total invites vs total responses
+   - attending vs not attending
+   - no-response count
+2. Send RSVP reminders from Reports using `Send RSVP Reminders`.
+   - Targets only sent invites with no RSVP yet.
+   - Skips unsent invites, responded invites, and invites without email.
+
+### T-10 to T-3 Days: Finalize Numbers
+
+1. Download `Export Venue Report` CSV:
+   - one row per attending guest
+   - table assignment (or Unassigned)
+   - starter/main/dessert selections
+   - meal count summary appended
+2. Download `Export Meal Counts` CSV for quick caterer totals.
+3. Share exports with venue/caterer and lock in final changes.
+
+### Wedding Day
+
+1. Send day-of photo upload links from Reports using `Send Photo Share Emails`.
+2. Guests upload via personal photo links.
 
 ## Weekly Check-In Template
 
