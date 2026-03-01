@@ -42,10 +42,21 @@ interface Invite {
   createdAt: string
   rsvpStatus: {
     hasResponded: boolean
+    rsvpId: string | null
     isAttending: boolean | null
     adultsAttending: number | null
     childrenAttending: number | null
     respondedAt: string | null
+  }
+  completeness: {
+    needsFollowUp: boolean
+    expectedMealSelections: number
+    actualMealSelections: number
+    missingMealSelections: number
+    expectedRequiredAnswers: number
+    actualRequiredAnswers: number
+    missingRequiredAnswers: number
+    isComplete: boolean
   }
 }
 
@@ -61,6 +72,9 @@ export default function InvitesAdmin() {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'attending' | 'not_attending'>('all')
   const [inviteShapeFilter, setInviteShapeFilter] = useState<
     'all' | 'plus_one_allowed' | 'has_children'
+  >('all')
+  const [completenessFilter, setCompletenessFilter] = useState<
+    'all' | 'needs_follow_up' | 'missing_meals' | 'missing_required_answers' | 'complete'
   >('all')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest')
 
@@ -318,6 +332,15 @@ export default function InvitesAdmin() {
 
       if (inviteShapeFilter === 'plus_one_allowed' && !invite.plusOneAllowed) return false
       if (inviteShapeFilter === 'has_children' && invite.childrenCount <= 0) return false
+      if (completenessFilter === 'needs_follow_up' && !invite.completeness.needsFollowUp) return false
+      if (completenessFilter === 'missing_meals' && invite.completeness.missingMealSelections <= 0) return false
+      if (
+        completenessFilter === 'missing_required_answers' &&
+        invite.completeness.missingRequiredAnswers <= 0
+      ) {
+        return false
+      }
+      if (completenessFilter === 'complete' && !invite.completeness.isComplete) return false
 
       return true
     })
@@ -340,7 +363,16 @@ export default function InvitesAdmin() {
           return createdB - createdA
       }
     })
-  }, [invites, searchQuery, sentFilter, responseFilter, attendanceFilter, inviteShapeFilter, sortBy])
+  }, [
+    invites,
+    searchQuery,
+    sentFilter,
+    responseFilter,
+    attendanceFilter,
+    inviteShapeFilter,
+    completenessFilter,
+    sortBy,
+  ])
 
   if (loading) {
     return <LoadingSpinner text="Loading invites..." />
@@ -565,7 +597,7 @@ export default function InvitesAdmin() {
             <CardDescription>Search, filter, and sort invitations for faster admin work.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
               <div className="xl:col-span-2">
                 <Label htmlFor="invite-search" className="text-xs">Search</Label>
                 <Input
@@ -631,6 +663,22 @@ export default function InvitesAdmin() {
                   <option value="has_children">Includes children</option>
                 </select>
               </div>
+
+              <div>
+                <Label htmlFor="completeness-filter" className="text-xs">Completeness</Label>
+                <select
+                  id="completeness-filter"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={completenessFilter}
+                  onChange={(e) => setCompletenessFilter(e.target.value as typeof completenessFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="needs_follow_up">Needs follow-up</option>
+                  <option value="missing_meals">Missing meal choices</option>
+                  <option value="missing_required_answers">Missing required answers</option>
+                  <option value="complete">Complete RSVP data</option>
+                </select>
+              </div>
             </div>
 
             <div className="mb-4 flex flex-wrap gap-3 items-end">
@@ -657,6 +705,7 @@ export default function InvitesAdmin() {
                   setResponseFilter('all')
                   setAttendanceFilter('all')
                   setInviteShapeFilter('all')
+                  setCompletenessFilter('all')
                   setSortBy('newest')
                 }}
               >
@@ -673,6 +722,8 @@ export default function InvitesAdmin() {
                   <TableHead>Count</TableHead>
                   <TableHead>Email Status</TableHead>
                   <TableHead>RSVP Response</TableHead>
+                  <TableHead>Attending</TableHead>
+                  <TableHead>Completeness</TableHead>
                   <TableHead>RSVP Link</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -742,6 +793,36 @@ export default function InvitesAdmin() {
                       ) : (
                         <Badge variant="outline">No Response</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {invite.rsvpStatus.hasResponded ? (
+                        <Badge variant="outline">
+                          {(invite.rsvpStatus.adultsAttending || 0) + (invite.rsvpStatus.childrenAttending || 0)}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {invite.completeness.needsFollowUp ? (
+                          <Badge variant="secondary">Needs follow-up</Badge>
+                        ) : invite.completeness.isComplete ? (
+                          <Badge className="bg-success text-success-foreground">Complete</Badge>
+                        ) : (
+                          <Badge variant="outline">Partial</Badge>
+                        )}
+                        {invite.completeness.missingMealSelections > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Meals missing: {invite.completeness.missingMealSelections}
+                          </div>
+                        )}
+                        {invite.completeness.missingRequiredAnswers > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Required answers missing: {invite.completeness.missingRequiredAnswers}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <code className="text-xs bg-muted px-2 py-1 rounded">

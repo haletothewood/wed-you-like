@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GetAllInvites } from '../GetAllInvites'
 import type { InviteRepository } from '@/domain/repositories/InviteRepository'
 import type { RSVPRepository } from '@/domain/repositories/RSVPRepository'
+import type { MealOptionRepository } from '@/domain/repositories/MealOptionRepository'
+import type { CustomQuestionRepository } from '@/domain/repositories/CustomQuestionRepository'
+import type { MealSelectionRepository } from '@/domain/repositories/MealSelectionRepository'
+import type { QuestionResponseRepository } from '@/domain/repositories/QuestionResponseRepository'
 import type { Invite } from '@/domain/entities/Invite'
 import type { RSVP } from '@/domain/entities/RSVP'
 
@@ -13,7 +17,16 @@ const createMockInvite = (id: string, token: string): Invite =>
     adultsCount: 1,
     childrenCount: 0,
     plusOneAllowed: false,
-    guests: [{ id: `guest-${id}`, name: 'Test Guest', email: 'test@example.com' }],
+    guests: [
+      {
+        id: `guest-${id}`,
+        name: 'Test Guest',
+        email: 'test@example.com',
+        isPlusOne: false,
+        isChild: false,
+        isInviteLead: true,
+      },
+    ],
     sentAt: null,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
@@ -35,6 +48,10 @@ const createMockRSVP = (id: string, inviteId: string): RSVP =>
 describe('GetAllInvites', () => {
   let inviteRepository: InviteRepository
   let rsvpRepository: RSVPRepository
+  let mealOptionRepository: MealOptionRepository
+  let customQuestionRepository: CustomQuestionRepository
+  let mealSelectionRepository: MealSelectionRepository
+  let questionResponseRepository: QuestionResponseRepository
   let useCase: GetAllInvites
 
   beforeEach(() => {
@@ -54,7 +71,49 @@ describe('GetAllInvites', () => {
       findByInviteIds: vi.fn(),
     }
 
-    useCase = new GetAllInvites(inviteRepository, rsvpRepository)
+    mealOptionRepository = {
+      save: vi.fn(),
+      findById: vi.fn(),
+      findByCourseType: vi.fn(),
+      findAll: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    customQuestionRepository = {
+      save: vi.fn(),
+      findById: vi.fn(),
+      findAll: vi.fn(),
+      findAllOrdered: vi.fn(),
+      delete: vi.fn(),
+    }
+
+    mealSelectionRepository = {
+      save: vi.fn(),
+      saveMany: vi.fn(),
+      findByGuestId: vi.fn(),
+      deleteByGuestId: vi.fn(),
+    }
+
+    questionResponseRepository = {
+      save: vi.fn(),
+      saveMany: vi.fn(),
+      findByRSVPId: vi.fn(),
+      deleteByRSVPId: vi.fn(),
+    }
+
+    vi.mocked(mealOptionRepository.findAll).mockResolvedValue([])
+    vi.mocked(customQuestionRepository.findAllOrdered).mockResolvedValue([])
+    vi.mocked(mealSelectionRepository.findByGuestId).mockResolvedValue([])
+    vi.mocked(questionResponseRepository.findByRSVPId).mockResolvedValue([])
+
+    useCase = new GetAllInvites(
+      inviteRepository,
+      rsvpRepository,
+      mealOptionRepository,
+      customQuestionRepository,
+      mealSelectionRepository,
+      questionResponseRepository
+    )
   })
 
   it('should use batch fetch for RSVPs instead of individual queries', async () => {
@@ -107,15 +166,35 @@ describe('GetAllInvites', () => {
       adultsCount: 1,
       childrenCount: 0,
       plusOneAllowed: false,
-      guests: [{ id: 'guest-invite-1', name: 'Test Guest', email: 'test@example.com' }],
+      guests: [
+        {
+          id: 'guest-invite-1',
+          name: 'Test Guest',
+          email: 'test@example.com',
+          isPlusOne: false,
+          isChild: false,
+          isInviteLead: true,
+        },
+      ],
       sentAt: null,
       createdAt: '2024-01-01T00:00:00.000Z',
       rsvpStatus: {
         hasResponded: true,
+        rsvpId: 'rsvp-1',
         isAttending: true,
         adultsAttending: 1,
         childrenAttending: 0,
         respondedAt: '2024-01-02T00:00:00.000Z',
+      },
+      completeness: {
+        needsFollowUp: false,
+        expectedMealSelections: 0,
+        actualMealSelections: 0,
+        missingMealSelections: 0,
+        expectedRequiredAnswers: 0,
+        actualRequiredAnswers: 0,
+        missingRequiredAnswers: 0,
+        isComplete: true,
       },
     })
   })
