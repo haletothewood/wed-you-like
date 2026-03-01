@@ -6,12 +6,19 @@ import type {
 
 export class ResendEmailService implements EmailService {
   private resend: Resend
+  private readonly mockDelivery: boolean
 
   constructor(apiKey: string) {
     this.resend = new Resend(apiKey)
+    this.mockDelivery = process.env.MOCK_EMAIL_DELIVERY === 'true'
   }
 
   async sendEmail(request: EmailSendRequest): Promise<void> {
+    if (this.mockDelivery) {
+      console.log(`[MOCK_EMAIL_DELIVERY] Skipping email send to ${request.to}`)
+      return
+    }
+
     try {
       const result = await this.resend.emails.send({
         from: 'Wedding Couple <rsvp@yourdomain.com>',

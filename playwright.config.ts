@@ -20,7 +20,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: `PLAYWRIGHT_DB_PATH=${dbPath} npm run e2e:prepare-db && TURSO_DATABASE_URL=file:${dbPath} npm run dev -- -p ${port}`,
+    command: `PLAYWRIGHT_DB_PATH=${dbPath} npm run e2e:prepare-db && TURSO_DATABASE_URL=file:${dbPath} MOCK_EMAIL_DELIVERY=true npm run dev -- -p ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
