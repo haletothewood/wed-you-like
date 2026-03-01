@@ -76,3 +76,13 @@ export const loginRateLimiter = new RateLimiter({
   maxAttempts: 5,
   windowMs: 15 * 60 * 1000,
 })
+
+export const rsvpReadRateLimiter = new RateLimiter({
+  maxAttempts: 60,
+  windowMs: 60 * 1000,
+})
+
+export const rsvpWriteRateLimiter = new RateLimiter({
+  maxAttempts: 20,
+  windowMs: 5 * 60 * 1000,
+})
