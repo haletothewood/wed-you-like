@@ -55,6 +55,8 @@ Thumbs.db
 
 # Testing
 coverage/
+playwright-report/
+test-results/
 
 # Koi PAI files
 .cursor/

@@ -15,6 +15,9 @@ export class DrizzleGuestRepository implements GuestRepository {
         email: guest.email,
         inviteId: guest.inviteId,
         isPlusOne: guest.isPlusOne,
+        isChild: guest.isChild,
+        parentGuestId: guest.parentGuestId,
+        isInviteLead: guest.isInviteLead,
         createdAt: now,
         updatedAt: now,
       })
@@ -24,6 +27,9 @@ export class DrizzleGuestRepository implements GuestRepository {
           name: guest.name,
           email: guest.email,
           isPlusOne: guest.isPlusOne,
+          isChild: guest.isChild,
+          parentGuestId: guest.parentGuestId,
+          isInviteLead: guest.isInviteLead,
           updatedAt: now,
         },
       })
@@ -44,6 +50,9 @@ export class DrizzleGuestRepository implements GuestRepository {
       email: record.email,
       inviteId: record.inviteId,
       isPlusOne: Boolean(record.isPlusOne),
+      isChild: Boolean(record.isChild),
+      parentGuestId: record.parentGuestId || undefined,
+      isInviteLead: Boolean(record.isInviteLead),
     }
   }
 
@@ -58,6 +67,9 @@ export class DrizzleGuestRepository implements GuestRepository {
       email: record.email,
       inviteId: record.inviteId,
       isPlusOne: Boolean(record.isPlusOne),
+      isChild: Boolean(record.isChild),
+      parentGuestId: record.parentGuestId || undefined,
+      isInviteLead: Boolean(record.isInviteLead),
     }))
   }
 
@@ -74,6 +86,9 @@ export class DrizzleGuestRepository implements GuestRepository {
       email: record.email,
       inviteId: record.inviteId,
       isPlusOne: true,
+      isChild: Boolean(record.isChild),
+      parentGuestId: record.parentGuestId || undefined,
+      isInviteLead: Boolean(record.isInviteLead),
     }
   }
 

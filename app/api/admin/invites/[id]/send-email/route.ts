@@ -19,11 +19,24 @@ export async function POST(
   try {
     const { id } = await params
 
-    // Use BASE_URL from environment variables for production
-    // Falls back to constructing from headers for development
-    const baseUrl =
-      process.env.BASE_URL ||
-      `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`
+    const configuredBaseUrl = process.env.BASE_URL?.trim()
+    let baseUrl: string
+
+    if (configuredBaseUrl) {
+      const parsed = new URL(configuredBaseUrl)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error('BASE_URL must use http or https')
+      }
+      baseUrl = parsed.origin
+    } else {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('BASE_URL must be configured in production')
+      }
+
+      const protocol = request.headers.get('x-forwarded-proto') || 'http'
+      const host = request.headers.get('host') || 'localhost:3000'
+      baseUrl = `${protocol}://${host}`
+    }
 
     const sendInviteEmail = new SendInviteEmail(
       inviteRepository,

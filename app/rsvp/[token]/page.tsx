@@ -25,6 +25,10 @@ interface Guest {
   id: string
   name: string
   email: string
+  isPlusOne: boolean
+  isChild: boolean
+  parentGuestId?: string
+  isInviteLead: boolean
 }
 
 interface MealOption {
@@ -96,10 +100,10 @@ export default function RSVP() {
       setInvite(data.invite)
 
       // Initialize attending guests list
-      const initialGuests = data.invite.guests.map((g: Guest, index: number) => ({
+      const initialGuests = data.invite.guests.map((g: Guest) => ({
         guestId: g.id,
         name: g.name,
-        isAdult: index < data.invite.adultsCount, // First N guests are adults
+        isAdult: !g.isChild,
       }))
       setAttendingGuests(initialGuests)
 
@@ -242,12 +246,11 @@ export default function RSVP() {
         return prev.filter(g => g.guestId !== guestId)
       } else {
         const guest = invite?.guests.find(g => g.id === guestId)
-        if (guest && invite) {
-          const index = invite.guests.indexOf(guest)
+        if (guest) {
           return [...prev, {
             guestId: guest.id,
             name: guest.name,
-            isAdult: index < invite.adultsCount
+            isAdult: !guest.isChild
           }]
         }
         return prev

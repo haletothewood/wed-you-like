@@ -37,12 +37,27 @@ describe('Invite Entity', () => {
     it('should create a group invite with multiple adults and children', () => {
       const invite = Invite.createGroup({
         groupName: 'The Smiths',
-        adultsCount: 2,
-        childrenCount: 1,
         guests: [
-          { name: 'John Smith', email: 'john@example.com' },
-          { name: 'Jane Smith', email: 'jane@example.com' },
-          { name: 'Billy Smith', email: '' },
+          {
+            id: 'adult-1',
+            name: 'John Smith',
+            email: 'john@example.com',
+            isChild: false,
+            isInviteLead: true,
+          },
+          {
+            id: 'adult-2',
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+            isChild: false,
+          },
+          {
+            id: 'child-1',
+            name: 'Billy Smith',
+            email: '',
+            isChild: true,
+            parentGuestId: 'adult-2',
+          },
         ],
       })
 
@@ -53,26 +68,30 @@ describe('Invite Entity', () => {
       expect(invite.token).toBeDefined()
     })
 
-    it('should throw error if guests count does not match adultsCount + childrenCount', () => {
+    it('should throw error if group invite has fewer than two guests', () => {
       expect(() => {
         Invite.createGroup({
           groupName: 'The Smiths',
-          adultsCount: 2,
-          childrenCount: 1,
-          guests: [{ name: 'John Smith', email: 'john@example.com' }],
+          guests: [
+            {
+              id: 'adult-1',
+              name: 'John Smith',
+              email: 'john@example.com',
+              isChild: false,
+              isInviteLead: true,
+            },
+          ],
         })
-      }).toThrow('Guest count must match adultsCount + childrenCount')
+      }).toThrow('Group invite requires at least two guests')
     })
 
     it('should require at least one guest with an email', () => {
       expect(() => {
         Invite.createGroup({
           groupName: 'The Smiths',
-          adultsCount: 2,
-          childrenCount: 0,
           guests: [
-            { name: 'John Smith', email: '' },
-            { name: 'Jane Smith', email: '' },
+            { id: 'adult-1', name: 'John Smith', email: '', isChild: false, isInviteLead: true },
+            { id: 'adult-2', name: 'Jane Smith', email: '', isChild: false },
           ],
         })
       }).toThrow('At least one guest must have an email address')
@@ -128,11 +147,9 @@ describe('Invite Entity', () => {
       expect(() => {
         Invite.createGroup({
           groupName: '',
-          adultsCount: 2,
-          childrenCount: 0,
           guests: [
-            { name: 'John', email: 'john@example.com' },
-            { name: 'Jane', email: 'jane@example.com' },
+            { id: 'adult-1', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
+            { id: 'adult-2', name: 'Jane', email: 'jane@example.com', isChild: false },
           ],
         })
       }).toThrow('Group name is required')
