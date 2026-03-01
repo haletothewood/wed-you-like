@@ -3,9 +3,14 @@ import type { InviteRepository } from '@/domain/repositories/InviteRepository'
 
 export interface CreateGroupInviteRequest {
   groupName: string
-  adultsCount: number
-  childrenCount: number
-  guests: Array<{ name: string; email: string }>
+  guests: Array<{
+    id: string
+    name: string
+    email: string
+    isChild: boolean
+    parentGuestId?: string
+    isInviteLead?: boolean
+  }>
 }
 
 export interface CreateGroupInviteResponse {
@@ -21,8 +26,6 @@ export class CreateGroupInvite {
   ): Promise<CreateGroupInviteResponse> {
     const invite = Invite.createGroup({
       groupName: request.groupName,
-      adultsCount: request.adultsCount,
-      childrenCount: request.childrenCount,
       guests: request.guests,
     })
 

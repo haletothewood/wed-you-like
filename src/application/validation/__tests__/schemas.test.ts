@@ -81,24 +81,23 @@ describe('Validation Schemas', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: 'The Smiths',
-        adultsCount: 2,
-        childrenCount: 1,
         guests: [
-          { name: 'John Smith', email: 'john@example.com' },
-          { name: 'Jane Smith', email: '' },
-          { name: 'Billy Smith', email: '' },
+          { id: 'adult-1', name: 'John Smith', email: 'john@example.com', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane Smith', email: '', isChild: false },
+          { id: 'child-1', name: 'Billy Smith', email: '', isChild: true, parentGuestId: 'adult-2' },
         ],
       })
       expect(result.success).toBe(true)
     })
 
-    it('should reject negative adults count', () => {
+    it('should reject duplicate guest IDs', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: 'The Smiths',
-        adultsCount: -1,
-        childrenCount: 0,
-        guests: [{ name: 'John', email: 'john@example.com' }],
+        guests: [
+          { id: 'dup', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
+          { id: 'dup', name: 'Jane', email: '', isChild: false },
+        ],
       })
       expect(result.success).toBe(false)
     })
@@ -107,11 +106,9 @@ describe('Validation Schemas', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: '',
-        adultsCount: 2,
-        childrenCount: 0,
         guests: [
-          { name: 'John', email: 'john@example.com' },
-          { name: 'Jane', email: '' },
+          { id: 'adult-1', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane', email: '', isChild: false },
         ],
       })
       expect(result.success).toBe(false)
@@ -121,8 +118,6 @@ describe('Validation Schemas', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: 'The Smiths',
-        adultsCount: 2,
-        childrenCount: 0,
         guests: [],
       })
       expect(result.success).toBe(false)
@@ -132,11 +127,21 @@ describe('Validation Schemas', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: 'The Smiths',
-        adultsCount: 2,
-        childrenCount: 0,
         guests: [
-          { name: 'John', email: '' },
-          { name: 'Jane', email: '' },
+          { id: 'adult-1', name: 'John', email: '', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane', email: '', isChild: false },
+        ],
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('should reject child without valid parent', () => {
+      const result = createGroupInviteSchema.safeParse({
+        type: 'group',
+        groupName: 'The Smiths',
+        guests: [
+          { id: 'adult-1', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
+          { id: 'child-1', name: 'Billy', email: '', isChild: true, parentGuestId: 'adult-1' },
         ],
       })
       expect(result.success).toBe(false)

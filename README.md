@@ -115,6 +115,16 @@ npm test
 npm run build
 ```
 
+## End-to-End Tests (Playwright)
+
+```bash
+npm run test:e2e
+```
+
+Notes:
+- Builds an isolated SQLite DB at `/tmp/wyl-playwright.sqlite.db` from repo migrations on each run.
+- Ensures an admin login exists: `admin / change-me-immediately`.
+
 ## Database Tasks
 
 ```bash

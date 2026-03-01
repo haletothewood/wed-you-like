@@ -4,6 +4,9 @@ export interface GuestData {
   email: string
   inviteId: string
   isPlusOne: boolean
+  isChild: boolean
+  parentGuestId?: string
+  isInviteLead: boolean
 }
 
 export interface GuestRepository {
