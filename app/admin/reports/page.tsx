@@ -29,6 +29,7 @@ export default function ReportsPage() {
   const [data, setData] = useState<ReportData | null>(null)
   const [exporting, setExporting] = useState<string | null>(null)
   const [sendingPhotoCampaign, setSendingPhotoCampaign] = useState(false)
+  const [sendingReminderCampaign, setSendingReminderCampaign] = useState(false)
 
   useEffect(() => {
     fetchReports()
@@ -91,6 +92,33 @@ export default function ReportsPage() {
       alert(error instanceof Error ? error.message : 'Failed to send photo share campaign')
     } finally {
       setSendingPhotoCampaign(false)
+    }
+  }
+
+  const handleSendReminderCampaign = async () => {
+    if (!confirm('Send RSVP reminder emails to pending invites (sent invites with no RSVP yet)?')) {
+      return
+    }
+
+    setSendingReminderCampaign(true)
+    try {
+      const response = await fetch('/api/admin/campaigns/rsvp-reminder', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send RSVP reminder campaign')
+      }
+
+      alert(
+        `RSVP reminder campaign complete.\n\nEligible pending: ${data.eligiblePending}\nSent: ${data.sent}\nSkipped (not sent yet): ${data.skippedNotSent}\nSkipped (already responded): ${data.skippedAlreadyResponded}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
+      )
+    } catch (error) {
+      console.error('Error sending RSVP reminder campaign:', error)
+      alert(error instanceof Error ? error.message : 'Failed to send RSVP reminder campaign')
+    } finally {
+      setSendingReminderCampaign(false)
     }
   }
 
@@ -317,6 +345,24 @@ export default function ReportsPage() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>RSVP Reminder Campaign</CardTitle>
+          <CardDescription>
+            Send reminder emails only to pending invites (already sent, not yet responded).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleSendReminderCampaign}
+            disabled={sendingReminderCampaign}
+            variant="secondary"
+          >
+            {sendingReminderCampaign ? 'Sending...' : 'Send RSVP Reminders'}
+          </Button>
         </CardContent>
       </Card>
 
