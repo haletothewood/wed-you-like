@@ -74,9 +74,11 @@ export class SubmitRSVP {
     }
 
     let plusOneGuestId: string | undefined
+    let existingPlusOneGuestId: string | undefined
 
     if (this.guestRepository) {
       const existingPlusOne = await this.guestRepository.findPlusOneByInviteId(invite.id)
+      existingPlusOneGuestId = existingPlusOne?.id
 
       if (hasPlusOne && request.isAttending) {
         if (existingPlusOne) {
@@ -130,6 +132,30 @@ export class SubmitRSVP {
       rsvpId = rsvp.id
     }
 
+    const guestIdsToClear = new Set(invite.guests.map((guest) => guest.id))
+    if (plusOneGuestId) {
+      guestIdsToClear.add(plusOneGuestId)
+    } else if (existingPlusOneGuestId) {
+      guestIdsToClear.add(existingPlusOneGuestId)
+    }
+
+    const clearMealSelections = async () => {
+      for (const guestId of guestIdsToClear) {
+        await this.mealSelectionRepository.deleteByGuestId(guestId)
+      }
+    }
+
+    if (!request.isAttending) {
+      await clearMealSelections()
+      await this.questionResponseRepository.deleteByRSVPId(rsvpId)
+
+      return {
+        success: true,
+        rsvpId,
+        plusOneGuestId,
+      }
+    }
+
     if (request.isAttending && request.mealSelections) {
       const inviteGuestIds = new Set(invite.guests.map((guest) => guest.id))
       const allowedGuestIds = new Set(inviteGuestIds)
@@ -177,12 +203,7 @@ export class SubmitRSVP {
         }
       }
 
-      for (const guest of invite.guests) {
-        await this.mealSelectionRepository.deleteByGuestId(guest.id)
-      }
-      if (plusOneGuestId) {
-        await this.mealSelectionRepository.deleteByGuestId(plusOneGuestId)
-      }
+      await clearMealSelections()
 
       const mealSelections = request.mealSelections.map((selection) => {
         const guestId = selection.guestId === 'PLUS_ONE' && plusOneGuestId
@@ -196,6 +217,8 @@ export class SubmitRSVP {
       })
 
       await this.mealSelectionRepository.saveMany(mealSelections)
+    } else if (request.isAttending) {
+      await clearMealSelections()
     }
 
     if (request.isAttending && request.questionResponses) {
@@ -223,6 +246,8 @@ export class SubmitRSVP {
         )
 
       await this.questionResponseRepository.saveMany(questionResponses)
+    } else if (request.isAttending) {
+      await this.questionResponseRepository.deleteByRSVPId(rsvpId)
     }
 
     return {

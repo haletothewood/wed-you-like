@@ -313,5 +313,65 @@ describe('SubmitRSVP', () => {
         })
       ).rejects.toThrow('Question response contains an unknown question')
     })
+
+    it('should clear meals and question responses when RSVP changes to not attending', async () => {
+      const invite = createMockInvite({
+        guests: [
+          { id: 'guest-1', name: 'John Smith', email: 'john@example.com' },
+          { id: 'guest-2', name: 'Jane Smith', email: 'jane@example.com' },
+        ],
+      })
+      const existingRsvp = {
+        id: 'rsvp-1',
+        updateAttendance: vi.fn(),
+      }
+
+      vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
+      vi.mocked(rsvpRepository.findByInviteId).mockResolvedValue(existingRsvp as never)
+      vi.mocked(guestRepository.findPlusOneByInviteId).mockResolvedValue({
+        id: 'plus-one-guest-1',
+        name: 'Plus One',
+        email: '',
+        inviteId: 'invite-1',
+        isPlusOne: true,
+        isChild: false,
+        isInviteLead: false,
+      })
+
+      await useCase.execute({
+        token: 'token-123',
+        isAttending: false,
+        adultsAttending: 0,
+        childrenAttending: 0,
+      })
+
+      expect(mealSelectionRepository.deleteByGuestId).toHaveBeenCalledWith('guest-1')
+      expect(mealSelectionRepository.deleteByGuestId).toHaveBeenCalledWith('guest-2')
+      expect(questionResponseRepository.deleteByRSVPId).toHaveBeenCalledWith('rsvp-1')
+    })
+
+    it('should clear previous responses when attending submission omits meals and questions', async () => {
+      const invite = createMockInvite()
+      const existingRsvp = {
+        id: 'rsvp-1',
+        updateAttendance: vi.fn(),
+      }
+
+      vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
+      vi.mocked(rsvpRepository.findByInviteId).mockResolvedValue(existingRsvp as never)
+      vi.mocked(guestRepository.findPlusOneByInviteId).mockResolvedValue(null)
+
+      await useCase.execute({
+        token: 'token-123',
+        isAttending: true,
+        adultsAttending: 1,
+        childrenAttending: 0,
+      })
+
+      expect(mealSelectionRepository.deleteByGuestId).toHaveBeenCalledWith('guest-1')
+      expect(questionResponseRepository.deleteByRSVPId).toHaveBeenCalledWith('rsvp-1')
+      expect(mealSelectionRepository.saveMany).not.toHaveBeenCalled()
+      expect(questionResponseRepository.saveMany).not.toHaveBeenCalled()
+    })
   })
 })
