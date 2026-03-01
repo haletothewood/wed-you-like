@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -55,6 +55,14 @@ export default function InvitesAdmin() {
   const [showForm, setShowForm] = useState(false)
   const [inviteType, setInviteType] = useState<'individual' | 'group'>('individual')
   const [sending, setSending] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sentFilter, setSentFilter] = useState<'all' | 'sent' | 'not_sent'>('all')
+  const [responseFilter, setResponseFilter] = useState<'all' | 'responded' | 'no_response'>('all')
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'attending' | 'not_attending'>('all')
+  const [inviteShapeFilter, setInviteShapeFilter] = useState<
+    'all' | 'plus_one_allowed' | 'has_children'
+  >('all')
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest')
 
   // Individual form state
   const [guestName, setGuestName] = useState('')
@@ -266,6 +274,73 @@ export default function InvitesAdmin() {
       })
     )
   }
+
+  const filteredInvites = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+
+    const filtered = invites.filter((invite) => {
+      if (normalizedQuery) {
+        const guestNames = invite.guests.map((g) => g.name).join(' ')
+        const guestEmails = invite.guests.map((g) => g.email).join(' ')
+        const searchable = [
+          invite.groupName || '',
+          guestNames,
+          guestEmails,
+          invite.token,
+        ]
+          .join(' ')
+          .toLowerCase()
+
+        if (!searchable.includes(normalizedQuery)) {
+          return false
+        }
+      }
+
+      if (sentFilter === 'sent' && !invite.sentAt) return false
+      if (sentFilter === 'not_sent' && invite.sentAt) return false
+
+      if (responseFilter === 'responded' && !invite.rsvpStatus.hasResponded) return false
+      if (responseFilter === 'no_response' && invite.rsvpStatus.hasResponded) return false
+
+      if (
+        attendanceFilter === 'attending' &&
+        !(invite.rsvpStatus.hasResponded && invite.rsvpStatus.isAttending === true)
+      ) {
+        return false
+      }
+
+      if (
+        attendanceFilter === 'not_attending' &&
+        !(invite.rsvpStatus.hasResponded && invite.rsvpStatus.isAttending === false)
+      ) {
+        return false
+      }
+
+      if (inviteShapeFilter === 'plus_one_allowed' && !invite.plusOneAllowed) return false
+      if (inviteShapeFilter === 'has_children' && invite.childrenCount <= 0) return false
+
+      return true
+    })
+
+    return filtered.sort((a, b) => {
+      const nameA = (a.groupName || a.guests[0]?.name || '').toLowerCase()
+      const nameB = (b.groupName || b.guests[0]?.name || '').toLowerCase()
+      const createdA = new Date(a.createdAt).getTime()
+      const createdB = new Date(b.createdAt).getTime()
+
+      switch (sortBy) {
+        case 'oldest':
+          return createdA - createdB
+        case 'name_asc':
+          return nameA.localeCompare(nameB)
+        case 'name_desc':
+          return nameB.localeCompare(nameA)
+        case 'newest':
+        default:
+          return createdB - createdA
+      }
+    })
+  }, [invites, searchQuery, sentFilter, responseFilter, attendanceFilter, inviteShapeFilter, sortBy])
 
   if (loading) {
     return <LoadingSpinner text="Loading invites..." />
@@ -483,9 +558,112 @@ export default function InvitesAdmin() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>All Invites ({invites.length})</CardTitle>
+            <CardTitle>
+              All Invites ({filteredInvites.length}
+              {filteredInvites.length !== invites.length ? ` of ${invites.length}` : ''})
+            </CardTitle>
+            <CardDescription>Search, filter, and sort invitations for faster admin work.</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+              <div className="xl:col-span-2">
+                <Label htmlFor="invite-search" className="text-xs">Search</Label>
+                <Input
+                  id="invite-search"
+                  placeholder="Group, guest name, email, token..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="sent-filter" className="text-xs">Email</Label>
+                <select
+                  id="sent-filter"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={sentFilter}
+                  onChange={(e) => setSentFilter(e.target.value as typeof sentFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="sent">Sent</option>
+                  <option value="not_sent">Not sent</option>
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="response-filter" className="text-xs">RSVP</Label>
+                <select
+                  id="response-filter"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={responseFilter}
+                  onChange={(e) => setResponseFilter(e.target.value as typeof responseFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="responded">Responded</option>
+                  <option value="no_response">No response</option>
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="attendance-filter" className="text-xs">Attendance</Label>
+                <select
+                  id="attendance-filter"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={attendanceFilter}
+                  onChange={(e) => setAttendanceFilter(e.target.value as typeof attendanceFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="attending">Attending</option>
+                  <option value="not_attending">Not attending</option>
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="shape-filter" className="text-xs">Type</Label>
+                <select
+                  id="shape-filter"
+                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                  value={inviteShapeFilter}
+                  onChange={(e) => setInviteShapeFilter(e.target.value as typeof inviteShapeFilter)}
+                >
+                  <option value="all">All</option>
+                  <option value="plus_one_allowed">Plus one allowed</option>
+                  <option value="has_children">Includes children</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap gap-3 items-end">
+              <div>
+                <Label htmlFor="sort-by" className="text-xs">Sort</Label>
+                <select
+                  id="sort-by"
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name_asc">Name A-Z</option>
+                  <option value="name_desc">Name Z-A</option>
+                </select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSentFilter('all')
+                  setResponseFilter('all')
+                  setAttendanceFilter('all')
+                  setInviteShapeFilter('all')
+                  setSortBy('newest')
+                }}
+              >
+                Reset Filters
+              </Button>
+            </div>
+
             <div className="overflow-x-auto">
               <Table>
               <TableHeader>
@@ -500,7 +678,7 @@ export default function InvitesAdmin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invites.map((invite) => (
+                {filteredInvites.map((invite) => (
                   <TableRow key={invite.id}>
                     <TableCell className="font-medium">
                       {invite.groupName || invite.guests[0]?.name || 'Unknown'}
@@ -591,6 +769,11 @@ export default function InvitesAdmin() {
                 ))}
               </TableBody>
             </Table>
+            {filteredInvites.length === 0 && (
+              <div className="text-sm text-muted-foreground py-4 text-center">
+                No invites match the current filters.
+              </div>
+            )}
             </div>
           </CardContent>
         </Card>
