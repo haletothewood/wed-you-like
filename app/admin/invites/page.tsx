@@ -1,15 +1,24 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import {
   Table,
@@ -19,6 +28,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+type InviteType = 'individual' | 'group'
+type SentFilter = 'all' | 'sent' | 'not_sent'
+type ResponseFilter = 'all' | 'responded' | 'no_response'
+type AttendanceFilter = 'all' | 'attending' | 'not_attending'
+type InviteShapeFilter = 'all' | 'plus_one_allowed' | 'has_children'
+type SortBy = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 
 interface Guest {
   id: string
@@ -49,43 +65,421 @@ interface Invite {
   }
 }
 
+interface GroupGuestDraft {
+  id: string
+  name: string
+  email: string
+  isChild: boolean
+  parentGuestId?: string
+  isInviteLead: boolean
+}
+
+type Notice = {
+  variant: 'default' | 'destructive'
+  message: string
+}
+
+type ConfirmState =
+  | {
+      type: 'delete'
+      inviteId: string
+      inviteLabel: string
+    }
+  | {
+      type: 'reminders'
+      inviteIds: string[]
+    }
+  | null
+
+const initialGroupGuests = (): GroupGuestDraft[] => [
+  { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
+  { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
+]
+
+const getInviteDisplayName = (invite: Invite): string => invite.groupName || invite.guests[0]?.name || 'Unknown'
+
+const escapeCsvValue = (value: string): string => {
+  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+async function parseApiError(response: Response, fallback: string): Promise<string> {
+  try {
+    const payload = await response.json()
+    if (payload?.error && typeof payload.error === 'string') {
+      return payload.error
+    }
+  } catch {
+    // Ignore non-JSON error payloads.
+  }
+  return fallback
+}
+
+function InviteFilters({
+  searchQuery,
+  setSearchQuery,
+  sentFilter,
+  setSentFilter,
+  responseFilter,
+  setResponseFilter,
+  attendanceFilter,
+  setAttendanceFilter,
+  inviteShapeFilter,
+  setInviteShapeFilter,
+  sortBy,
+  setSortBy,
+  onReset,
+}: {
+  searchQuery: string
+  setSearchQuery: (value: string) => void
+  sentFilter: SentFilter
+  setSentFilter: (value: SentFilter) => void
+  responseFilter: ResponseFilter
+  setResponseFilter: (value: ResponseFilter) => void
+  attendanceFilter: AttendanceFilter
+  setAttendanceFilter: (value: AttendanceFilter) => void
+  inviteShapeFilter: InviteShapeFilter
+  setInviteShapeFilter: (value: InviteShapeFilter) => void
+  sortBy: SortBy
+  setSortBy: (value: SortBy) => void
+  onReset: () => void
+}) {
+  return (
+    <>
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <div className="xl:col-span-2">
+          <Label htmlFor="invite-search" className="text-xs">
+            Search
+          </Label>
+          <Input
+            id="invite-search"
+            placeholder="Group, guest name, email, token..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="sent-filter" className="text-xs">
+            Email
+          </Label>
+          <select
+            id="sent-filter"
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={sentFilter}
+            onChange={(e) => setSentFilter(e.target.value as SentFilter)}
+          >
+            <option value="all">All</option>
+            <option value="sent">Sent</option>
+            <option value="not_sent">Not sent</option>
+          </select>
+        </div>
+
+        <div>
+          <Label htmlFor="response-filter" className="text-xs">
+            RSVP
+          </Label>
+          <select
+            id="response-filter"
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={responseFilter}
+            onChange={(e) => setResponseFilter(e.target.value as ResponseFilter)}
+          >
+            <option value="all">All</option>
+            <option value="responded">Responded</option>
+            <option value="no_response">No response</option>
+          </select>
+        </div>
+
+        <div>
+          <Label htmlFor="attendance-filter" className="text-xs">
+            Attendance
+          </Label>
+          <select
+            id="attendance-filter"
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={attendanceFilter}
+            onChange={(e) => setAttendanceFilter(e.target.value as AttendanceFilter)}
+          >
+            <option value="all">All</option>
+            <option value="attending">Attending</option>
+            <option value="not_attending">Not attending</option>
+          </select>
+        </div>
+
+        <div>
+          <Label htmlFor="shape-filter" className="text-xs">
+            Type
+          </Label>
+          <select
+            id="shape-filter"
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={inviteShapeFilter}
+            onChange={(e) => setInviteShapeFilter(e.target.value as InviteShapeFilter)}
+          >
+            <option value="all">All</option>
+            <option value="plus_one_allowed">Plus one allowed</option>
+            <option value="has_children">Includes children</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div>
+          <Label htmlFor="sort-by" className="text-xs">
+            Sort
+          </Label>
+          <select
+            id="sort-by"
+            className="h-9 rounded-md border bg-background px-3 text-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name_asc">Name A-Z</option>
+            <option value="name_desc">Name Z-A</option>
+          </select>
+        </div>
+        <Button type="button" variant="outline" onClick={onReset}>
+          Reset Filters
+        </Button>
+      </div>
+    </>
+  )
+}
+
+function BulkActions({
+  filteredInvites,
+  selectedInviteIds,
+  reminderEligibleCount,
+  selectedFilteredCount,
+  onToggleSelectAllFiltered,
+  onSendReminders,
+  onExportCsv,
+  bulkSending,
+}: {
+  filteredInvites: Invite[]
+  selectedInviteIds: string[]
+  reminderEligibleCount: number
+  selectedFilteredCount: number
+  onToggleSelectAllFiltered: () => void
+  onSendReminders: () => void
+  onExportCsv: () => void
+  bulkSending: boolean
+}) {
+  const allFilteredSelected =
+    filteredInvites.length > 0 &&
+    filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onToggleSelectAllFiltered}
+        disabled={filteredInvites.length === 0}
+      >
+        {allFilteredSelected ? 'Clear Filtered Selection' : 'Select All Filtered'}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={onSendReminders}
+        disabled={bulkSending || reminderEligibleCount === 0}
+      >
+        {bulkSending ? 'Sending Reminders...' : `Send Reminders (${reminderEligibleCount})`}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onExportCsv}
+        disabled={selectedInviteIds.length === 0}
+      >
+        Export Selected CSV ({selectedInviteIds.length})
+      </Button>
+      <span className="text-xs text-muted-foreground">Selected in current view: {selectedFilteredCount}</span>
+    </div>
+  )
+}
+
+function InvitesTable({
+  filteredInvites,
+  selectedInviteIds,
+  sending,
+  onToggleSelectAllFiltered,
+  onToggleInviteSelection,
+  onSendEmail,
+  onDelete,
+}: {
+  filteredInvites: Invite[]
+  selectedInviteIds: string[]
+  sending: string | null
+  onToggleSelectAllFiltered: () => void
+  onToggleInviteSelection: (inviteId: string) => void
+  onSendEmail: (inviteId: string) => void
+  onDelete: (inviteId: string, inviteLabel: string) => void
+}) {
+  const allFilteredSelected =
+    filteredInvites.length > 0 &&
+    filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={allFilteredSelected}
+                onCheckedChange={onToggleSelectAllFiltered}
+                aria-label="Select all filtered invites"
+              />
+            </TableHead>
+            <TableHead>Name/Group</TableHead>
+            <TableHead>Guests</TableHead>
+            <TableHead>Count</TableHead>
+            <TableHead>Email Status</TableHead>
+            <TableHead>RSVP Response</TableHead>
+            <TableHead>RSVP Link</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredInvites.map((invite) => (
+            <TableRow key={invite.id}>
+              <TableCell>
+                <Checkbox
+                  checked={selectedInviteIds.includes(invite.id)}
+                  onCheckedChange={() => onToggleInviteSelection(invite.id)}
+                  aria-label={`Select invite ${getInviteDisplayName(invite)}`}
+                />
+              </TableCell>
+              <TableCell className="font-medium">
+                {getInviteDisplayName(invite)}
+                {invite.plusOneAllowed && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    +1
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="space-y-1 text-sm">
+                  {invite.guests.map((guest) => (
+                    <div key={guest.id} className="flex items-center gap-2">
+                      <span>{guest.name}</span>
+                      {guest.isChild && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Child
+                        </Badge>
+                      )}
+                      {!guest.isChild && guest.isInviteLead && (
+                        <Badge variant="outline" className="text-[10px]">
+                          Lead
+                        </Badge>
+                      )}
+                      {guest.isPlusOne && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Plus-one
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">
+                  {invite.adultsCount}A {invite.childrenCount}C
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {invite.sentAt ? (
+                  <Badge className="bg-success text-success-foreground">Sent</Badge>
+                ) : (
+                  <Badge variant="secondary">Not Sent</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {invite.rsvpStatus.hasResponded ? (
+                  <div className="space-y-1">
+                    <Badge
+                      className={
+                        invite.rsvpStatus.isAttending
+                          ? 'bg-success text-success-foreground'
+                          : 'bg-destructive text-destructive-foreground'
+                      }
+                    >
+                      {invite.rsvpStatus.isAttending ? '✓ Attending' : '✗ Not Attending'}
+                    </Badge>
+                    {invite.rsvpStatus.isAttending && (
+                      <div className="text-xs text-muted-foreground">
+                        {invite.rsvpStatus.adultsAttending}A {invite.rsvpStatus.childrenAttending}C
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Badge variant="outline">No Response</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <code className="rounded bg-muted px-2 py-1 text-xs">/rsvp/{invite.token}</code>
+              </TableCell>
+              <TableCell className="space-x-2 text-right">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={sending === invite.id}
+                  onClick={() => onSendEmail(invite.id)}
+                >
+                  {sending === invite.id ? 'Sending...' : 'Send Email'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onDelete(invite.id, getInviteDisplayName(invite))}
+                >
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {filteredInvites.length === 0 && (
+        <div className="py-4 text-center text-sm text-muted-foreground">
+          No invites match the current filters.
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function InvitesAdmin() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [inviteType, setInviteType] = useState<'individual' | 'group'>('individual')
+  const [inviteType, setInviteType] = useState<InviteType>('individual')
   const [sending, setSending] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sentFilter, setSentFilter] = useState<'all' | 'sent' | 'not_sent'>('all')
-  const [responseFilter, setResponseFilter] = useState<'all' | 'responded' | 'no_response'>('all')
-  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'attending' | 'not_attending'>('all')
-  const [inviteShapeFilter, setInviteShapeFilter] = useState<
-    'all' | 'plus_one_allowed' | 'has_children'
-  >('all')
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest')
-  const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([])
   const [bulkSending, setBulkSending] = useState(false)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [confirmState, setConfirmState] = useState<ConfirmState>(null)
 
-  // Individual form state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sentFilter, setSentFilter] = useState<SentFilter>('all')
+  const [responseFilter, setResponseFilter] = useState<ResponseFilter>('all')
+  const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('all')
+  const [inviteShapeFilter, setInviteShapeFilter] = useState<InviteShapeFilter>('all')
+  const [sortBy, setSortBy] = useState<SortBy>('newest')
+  const [selectedInviteIds, setSelectedInviteIds] = useState<string[]>([])
+
   const [guestName, setGuestName] = useState('')
   const [email, setEmail] = useState('')
   const [plusOneAllowed, setPlusOneAllowed] = useState(false)
 
-  // Group form state
   const [groupName, setGroupName] = useState('')
-  const [groupGuests, setGroupGuests] = useState<
-    Array<{
-      id: string
-      name: string
-      email: string
-      isChild: boolean
-      parentGuestId?: string
-      isInviteLead: boolean
-    }>
-  >([
-    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
-    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
-  ])
+  const [groupGuests, setGroupGuests] = useState<GroupGuestDraft[]>(initialGroupGuests)
 
   useEffect(() => {
     fetchInvites()
@@ -99,197 +493,25 @@ export default function InvitesAdmin() {
     } catch (error) {
       console.error('Error fetching invites:', error)
       setInvites([])
+      setNotice({ variant: 'destructive', message: 'Failed to fetch invites.' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCreateIndividual = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const response = await fetch('/api/admin/invites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'individual',
-          guestName,
-          email,
-          plusOneAllowed,
-        }),
-      })
-
-      if (response.ok) {
-        setGuestName('')
-        setEmail('')
-        setPlusOneAllowed(false)
-        setShowForm(false)
-        fetchInvites()
-      }
-    } catch (error) {
-      console.error('Error creating invite:', error)
-    }
-  }
-
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const response = await fetch('/api/admin/invites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'group',
-          groupName,
-          guests: groupGuests,
-        }),
-      })
-
-      if (response.ok) {
-        setGroupName('')
-        setGroupGuests([
-          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
-          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
-        ])
-        setShowForm(false)
-        fetchInvites()
-      }
-    } catch (error) {
-      console.error('Error creating group invite:', error)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this invite?')) return
-
-    try {
-      const response = await fetch(`/api/admin/invites/${id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        fetchInvites()
-      }
-    } catch (error) {
-      console.error('Error deleting invite:', error)
-    }
-  }
-
-  const handleSendEmail = async (id: string) => {
-    setSending(id)
-    try {
-      const response = await fetch(`/api/admin/invites/${id}/send-email`, {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        alert(`Email sent successfully to ${data.sentTo}`)
-        fetchInvites()
-      } else {
-        alert(`Error: ${data.error}`)
-      }
-    } catch (error) {
-      console.error('Error sending email:', error)
-      alert('Failed to send email')
-    } finally {
-      setSending(null)
-    }
-  }
-
-  const updateGroupGuest = (
-    index: number,
-    field: 'name' | 'email' | 'parentGuestId',
-    value: string
-  ) => {
-    const updated = [...groupGuests]
-    updated[index] = {
-      ...updated[index],
-      [field]: value,
-    }
-    setGroupGuests(updated)
-  }
-
-  const addAdultGuest = () => {
-    setGroupGuests((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: '',
-        email: '',
-        isChild: false,
-        isInviteLead: prev.every((g) => !g.isInviteLead),
-      },
-    ])
-  }
-
-  const addChildGuest = () => {
-    const eligibleParents = groupGuests.filter((g) => !g.isChild && !g.isInviteLead)
-    setGroupGuests((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: '',
-        email: '',
-        isChild: true,
-        parentGuestId: eligibleParents[0]?.id,
-        isInviteLead: false,
-      },
-    ])
-  }
-
-  const removeGroupGuest = (id: string) => {
-    setGroupGuests((prev) => {
-      const filtered = prev.filter((g) => g.id !== id && g.parentGuestId !== id)
-      if (!filtered.some((g) => g.isInviteLead)) {
-        const firstAdultIdx = filtered.findIndex((g) => !g.isChild)
-        if (firstAdultIdx >= 0) {
-          filtered[firstAdultIdx] = { ...filtered[firstAdultIdx], isInviteLead: true }
-        }
-      }
-      return filtered
-    })
-  }
-
-  const toggleGuestType = (id: string, isChild: boolean) => {
-    setGroupGuests((prev) => {
-      const eligibleParents = prev.filter((g) => g.id !== id && !g.isChild && !g.isInviteLead)
-      return prev.map((guest) => {
-        if (guest.id !== id) {
-          return guest.parentGuestId === id ? { ...guest, parentGuestId: undefined } : guest
-        }
-
-        return {
-          ...guest,
-          isChild,
-          parentGuestId: isChild ? guest.parentGuestId || eligibleParents[0]?.id : undefined,
-          isInviteLead: isChild ? false : guest.isInviteLead,
-        }
-      })
-    })
-  }
-
-  const setInviteLead = (id: string) => {
-    setGroupGuests((prev) =>
-      prev.map((guest) => {
-        if (guest.isChild) return { ...guest, isInviteLead: false }
-        return { ...guest, isInviteLead: guest.id === id }
-      })
-    )
-  }
+  useEffect(() => {
+    const inviteIds = new Set(invites.map((invite) => invite.id))
+    setSelectedInviteIds((prev) => prev.filter((inviteId) => inviteIds.has(inviteId)))
+  }, [invites])
 
   const filteredInvites = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
 
     const filtered = invites.filter((invite) => {
       if (normalizedQuery) {
-        const guestNames = invite.guests.map((g) => g.name).join(' ')
-        const guestEmails = invite.guests.map((g) => g.email).join(' ')
-        const searchable = [
-          invite.groupName || '',
-          guestNames,
-          guestEmails,
-          invite.token,
-        ]
+        const guestNames = invite.guests.map((guest) => guest.name).join(' ')
+        const guestEmails = invite.guests.map((guest) => guest.email).join(' ')
+        const searchable = [invite.groupName || '', guestNames, guestEmails, invite.token]
           .join(' ')
           .toLowerCase()
 
@@ -325,8 +547,8 @@ export default function InvitesAdmin() {
     })
 
     return filtered.sort((a, b) => {
-      const nameA = (a.groupName || a.guests[0]?.name || '').toLowerCase()
-      const nameB = (b.groupName || b.guests[0]?.name || '').toLowerCase()
+      const nameA = getInviteDisplayName(a).toLowerCase()
+      const nameB = getInviteDisplayName(b).toLowerCase()
       const createdA = new Date(a.createdAt).getTime()
       const createdB = new Date(b.createdAt).getTime()
 
@@ -359,10 +581,10 @@ export default function InvitesAdmin() {
     [selectedInviteIds, filteredInviteIds]
   )
 
-  const selectedNonResponderIds = useMemo(
+  const selectedReminderEligibleIds = useMemo(
     () =>
       selectedInvites
-        .filter((invite) => !invite.rsvpStatus.hasResponded)
+        .filter((invite) => !invite.rsvpStatus.hasResponded && Boolean(invite.sentAt))
         .map((invite) => invite.id),
     [selectedInvites]
   )
@@ -392,21 +614,128 @@ export default function InvitesAdmin() {
     })
   }
 
-  const handleBulkSendReminders = async () => {
-    if (selectedNonResponderIds.length === 0) {
-      alert('Select at least one non-responder invite to send reminders.')
-      return
-    }
+  const handleCreateIndividual = async (e: FormEvent) => {
+    e.preventDefault()
+    setNotice(null)
 
-    if (!confirm(`Send reminder emails to ${selectedNonResponderIds.length} invite(s)?`)) {
-      return
-    }
+    try {
+      const response = await fetch('/api/admin/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'individual',
+          guestName,
+          email,
+          plusOneAllowed,
+        }),
+      })
 
+      if (!response.ok) {
+        const errorMessage = await parseApiError(response, 'Failed to create invite.')
+        setNotice({ variant: 'destructive', message: errorMessage })
+        return
+      }
+
+      setGuestName('')
+      setEmail('')
+      setPlusOneAllowed(false)
+      setShowForm(false)
+      await fetchInvites()
+      setNotice({ variant: 'default', message: 'Individual invite created.' })
+    } catch (error) {
+      console.error('Error creating invite:', error)
+      setNotice({ variant: 'destructive', message: 'Failed to create invite.' })
+    }
+  }
+
+  const handleCreateGroup = async (e: FormEvent) => {
+    e.preventDefault()
+    setNotice(null)
+
+    try {
+      const response = await fetch('/api/admin/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'group',
+          groupName,
+          guests: groupGuests,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorMessage = await parseApiError(response, 'Failed to create group invite.')
+        setNotice({ variant: 'destructive', message: errorMessage })
+        return
+      }
+
+      setGroupName('')
+      setGroupGuests(initialGroupGuests())
+      setShowForm(false)
+      await fetchInvites()
+      setNotice({ variant: 'default', message: 'Group invite created.' })
+    } catch (error) {
+      console.error('Error creating group invite:', error)
+      setNotice({ variant: 'destructive', message: 'Failed to create group invite.' })
+    }
+  }
+
+  const handleDeleteInvite = async (inviteId: string) => {
+    setNotice(null)
+
+    try {
+      const response = await fetch(`/api/admin/invites/${inviteId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorMessage = await parseApiError(response, 'Failed to delete invite.')
+        setNotice({ variant: 'destructive', message: errorMessage })
+        return
+      }
+
+      await fetchInvites()
+      setNotice({ variant: 'default', message: 'Invite deleted.' })
+    } catch (error) {
+      console.error('Error deleting invite:', error)
+      setNotice({ variant: 'destructive', message: 'Failed to delete invite.' })
+    }
+  }
+
+  const handleSendEmail = async (inviteId: string) => {
+    setSending(inviteId)
+    setNotice(null)
+
+    try {
+      const response = await fetch(`/api/admin/invites/${inviteId}/send-email`, {
+        method: 'POST',
+      })
+
+      const errorMessage = await parseApiError(response, 'Failed to send email.')
+
+      if (!response.ok) {
+        setNotice({ variant: 'destructive', message: errorMessage })
+        return
+      }
+
+      setNotice({ variant: 'default', message: 'Email sent successfully.' })
+      await fetchInvites()
+    } catch (error) {
+      console.error('Error sending email:', error)
+      setNotice({ variant: 'destructive', message: 'Failed to send email.' })
+    } finally {
+      setSending(null)
+    }
+  }
+
+  const executeBulkReminderSend = async (inviteIds: string[]) => {
     setBulkSending(true)
+    setNotice(null)
+
     let successCount = 0
     let failureCount = 0
 
-    for (const inviteId of selectedNonResponderIds) {
+    for (const inviteId of inviteIds) {
       try {
         const response = await fetch(`/api/admin/invites/${inviteId}/send-email`, {
           method: 'POST',
@@ -423,19 +752,24 @@ export default function InvitesAdmin() {
 
     setBulkSending(false)
     await fetchInvites()
-    alert(`Reminder send complete. Success: ${successCount}. Failed: ${failureCount}.`)
-  }
 
-  const escapeCsvValue = (value: string): string => {
-    if (value.includes('"') || value.includes(',') || value.includes('\n')) {
-      return `"${value.replace(/"/g, '""')}"`
+    if (failureCount > 0) {
+      setNotice({
+        variant: 'destructive',
+        message: `Reminder send complete. Success: ${successCount}. Failed: ${failureCount}.`,
+      })
+      return
     }
-    return value
+
+    setNotice({
+      variant: 'default',
+      message: `Reminder send complete. Success: ${successCount}.`,
+    })
   }
 
   const handleExportSelectedCsv = () => {
     if (selectedInvites.length === 0) {
-      alert('Select at least one invite to export.')
+      setNotice({ variant: 'destructive', message: 'Select at least one invite to export.' })
       return
     }
 
@@ -454,11 +788,10 @@ export default function InvitesAdmin() {
     ]
 
     const rows = selectedInvites.map((invite) => {
-      const primaryEmail = invite.guests.find((g) => g.email?.trim())?.email || ''
-      const groupOrName = invite.groupName || invite.guests[0]?.name || 'Unknown'
+      const primaryEmail = invite.guests.find((guest) => guest.email?.trim())?.email || ''
       return [
         invite.id,
-        groupOrName,
+        getInviteDisplayName(invite),
         primaryEmail,
         String(invite.adultsCount),
         String(invite.childrenCount),
@@ -471,16 +804,147 @@ export default function InvitesAdmin() {
       ].map(escapeCsvValue)
     })
 
-    const csv = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const csv = [header.join(','), ...rows.map((row) => row.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
+
     link.href = url
     link.download = `selected-invites-${new Date().toISOString().slice(0, 10)}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+
+    setNotice({ variant: 'default', message: 'CSV export generated.' })
+  }
+
+  const updateGroupGuest = (
+    index: number,
+    field: 'name' | 'email' | 'parentGuestId',
+    value: string
+  ) => {
+    setGroupGuests((prev) => {
+      const updated = [...prev]
+      updated[index] = {
+        ...updated[index],
+        [field]: value,
+      }
+      return updated
+    })
+  }
+
+  const addAdultGuest = () => {
+    setGroupGuests((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        email: '',
+        isChild: false,
+        isInviteLead: prev.every((guest) => !guest.isInviteLead),
+      },
+    ])
+  }
+
+  const addChildGuest = () => {
+    const eligibleParents = groupGuests.filter((guest) => !guest.isChild && !guest.isInviteLead)
+    setGroupGuests((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        email: '',
+        isChild: true,
+        parentGuestId: eligibleParents[0]?.id,
+        isInviteLead: false,
+      },
+    ])
+  }
+
+  const removeGroupGuest = (id: string) => {
+    setGroupGuests((prev) => {
+      const filtered = prev.filter((guest) => guest.id !== id && guest.parentGuestId !== id)
+      if (!filtered.some((guest) => guest.isInviteLead)) {
+        const firstAdultIndex = filtered.findIndex((guest) => !guest.isChild)
+        if (firstAdultIndex >= 0) {
+          filtered[firstAdultIndex] = { ...filtered[firstAdultIndex], isInviteLead: true }
+        }
+      }
+      return filtered
+    })
+  }
+
+  const toggleGuestType = (id: string, isChild: boolean) => {
+    setGroupGuests((prev) => {
+      const eligibleParents = prev.filter((guest) => guest.id !== id && !guest.isChild && !guest.isInviteLead)
+      return prev.map((guest) => {
+        if (guest.id !== id) {
+          return guest.parentGuestId === id ? { ...guest, parentGuestId: undefined } : guest
+        }
+
+        return {
+          ...guest,
+          isChild,
+          parentGuestId: isChild ? guest.parentGuestId || eligibleParents[0]?.id : undefined,
+          isInviteLead: isChild ? false : guest.isInviteLead,
+        }
+      })
+    })
+  }
+
+  const setInviteLead = (id: string) => {
+    setGroupGuests((prev) =>
+      prev.map((guest) => {
+        if (guest.isChild) return { ...guest, isInviteLead: false }
+        return { ...guest, isInviteLead: guest.id === id }
+      })
+    )
+  }
+
+  const closeConfirmDialog = () => setConfirmState(null)
+
+  const handleConfirmAction = async () => {
+    if (!confirmState) return
+
+    if (confirmState.type === 'delete') {
+      const inviteId = confirmState.inviteId
+      closeConfirmDialog()
+      await handleDeleteInvite(inviteId)
+      return
+    }
+
+    const reminderInviteIds = confirmState.inviteIds
+    closeConfirmDialog()
+    await executeBulkReminderSend(reminderInviteIds)
+  }
+
+  const openDeleteConfirm = (inviteId: string, inviteLabel: string) => {
+    setConfirmState({ type: 'delete', inviteId, inviteLabel })
+  }
+
+  const openBulkReminderConfirm = () => {
+    if (selectedReminderEligibleIds.length === 0) {
+      setNotice({
+        variant: 'destructive',
+        message: 'Select at least one invite that was already sent and has not RSVP\'d.',
+      })
+      return
+    }
+
+    setConfirmState({
+      type: 'reminders',
+      inviteIds: selectedReminderEligibleIds,
+    })
+  }
+
+  const resetFilters = () => {
+    setSearchQuery('')
+    setSentFilter('all')
+    setResponseFilter('all')
+    setAttendanceFilter('all')
+    setInviteShapeFilter('all')
+    setSortBy('newest')
   }
 
   if (loading) {
@@ -493,19 +957,23 @@ export default function InvitesAdmin() {
         title="Invite Management"
         description="Create and manage wedding invitations"
         action={
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => setShowForm((prev) => !prev)}>
             {showForm ? 'Cancel' : 'Create Invite'}
           </Button>
         }
       />
 
+      {notice && (
+        <Alert variant={notice.variant} className="mb-6">
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
+
       {showForm && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Create New Invite</CardTitle>
-            <CardDescription>
-              Send invitations to individual guests or groups
-            </CardDescription>
+            <CardDescription>Send invitations to individual guests or groups</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex gap-4">
@@ -558,7 +1026,7 @@ export default function InvitesAdmin() {
                     checked={plusOneAllowed}
                     onCheckedChange={(checked) => setPlusOneAllowed(checked as boolean)}
                   />
-                  <Label htmlFor="plusOne" className="font-normal cursor-pointer">
+                  <Label htmlFor="plusOne" className="cursor-pointer font-normal">
                     Allow Plus One
                   </Label>
                 </div>
@@ -597,14 +1065,12 @@ export default function InvitesAdmin() {
                     Children must be linked to an adult who is not the invite lead.
                   </p>
                   {groupGuests.map((guest, idx) => (
-                    <div key={guest.id} className="rounded-md border p-3 space-y-3">
+                    <div key={guest.id} className="space-y-3 rounded-md border p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={guest.isChild ? 'secondary' : 'outline'}>
                           {guest.isChild ? 'Child' : 'Adult'}
                         </Badge>
-                        {!guest.isChild && guest.isInviteLead && (
-                          <Badge>Invite Lead</Badge>
-                        )}
+                        {!guest.isChild && guest.isInviteLead && <Badge>Invite Lead</Badge>}
                         <Button
                           type="button"
                           variant={guest.isChild ? 'outline' : 'secondary'}
@@ -643,7 +1109,7 @@ export default function InvitesAdmin() {
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <Input
                           placeholder={`Guest ${idx + 1} Name`}
                           value={guest.name}
@@ -662,13 +1128,13 @@ export default function InvitesAdmin() {
                         <div className="space-y-1">
                           <Label className="text-xs">Parent Guest</Label>
                           <select
-                            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                             value={guest.parentGuestId || ''}
                             onChange={(e) => updateGroupGuest(idx, 'parentGuestId', e.target.value)}
                           >
                             <option value="">Select parent</option>
                             {groupGuests
-                              .filter((g) => !g.isChild && !g.isInviteLead && g.id !== guest.id)
+                              .filter((parent) => !parent.isChild && !parent.isInviteLead && parent.id !== guest.id)
                               .map((parent) => (
                                 <option key={parent.id} value={parent.id}>
                                   {parent.name || 'Unnamed adult'}
@@ -692,9 +1158,7 @@ export default function InvitesAdmin() {
         <EmptyState
           title="No invites created yet"
           description="Click 'Create Invite' to send your first invitation"
-          action={
-            <Button onClick={() => setShowForm(true)}>Create First Invite</Button>
-          }
+          action={<Button onClick={() => setShowForm(true)}>Create First Invite</Button>}
         />
       ) : (
         <Card>
@@ -703,274 +1167,77 @@ export default function InvitesAdmin() {
               All Invites ({filteredInvites.length}
               {filteredInvites.length !== invites.length ? ` of ${invites.length}` : ''})
             </CardTitle>
-            <CardDescription>Search, filter, and sort invitations for faster admin work.</CardDescription>
+            <CardDescription>
+              Search, filter, and sort invitations for faster admin work.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-              <div className="xl:col-span-2">
-                <Label htmlFor="invite-search" className="text-xs">Search</Label>
-                <Input
-                  id="invite-search"
-                  placeholder="Group, guest name, email, token..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+            <InviteFilters
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              sentFilter={sentFilter}
+              setSentFilter={setSentFilter}
+              responseFilter={responseFilter}
+              setResponseFilter={setResponseFilter}
+              attendanceFilter={attendanceFilter}
+              setAttendanceFilter={setAttendanceFilter}
+              inviteShapeFilter={inviteShapeFilter}
+              setInviteShapeFilter={setInviteShapeFilter}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              onReset={resetFilters}
+            />
 
-              <div>
-                <Label htmlFor="sent-filter" className="text-xs">Email</Label>
-                <select
-                  id="sent-filter"
-                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                  value={sentFilter}
-                  onChange={(e) => setSentFilter(e.target.value as typeof sentFilter)}
-                >
-                  <option value="all">All</option>
-                  <option value="sent">Sent</option>
-                  <option value="not_sent">Not sent</option>
-                </select>
-              </div>
+            <BulkActions
+              filteredInvites={filteredInvites}
+              selectedInviteIds={selectedInviteIds}
+              reminderEligibleCount={selectedReminderEligibleIds.length}
+              selectedFilteredCount={selectedFilteredCount}
+              onToggleSelectAllFiltered={toggleSelectAllFiltered}
+              onSendReminders={openBulkReminderConfirm}
+              onExportCsv={handleExportSelectedCsv}
+              bulkSending={bulkSending}
+            />
 
-              <div>
-                <Label htmlFor="response-filter" className="text-xs">RSVP</Label>
-                <select
-                  id="response-filter"
-                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                  value={responseFilter}
-                  onChange={(e) => setResponseFilter(e.target.value as typeof responseFilter)}
-                >
-                  <option value="all">All</option>
-                  <option value="responded">Responded</option>
-                  <option value="no_response">No response</option>
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="attendance-filter" className="text-xs">Attendance</Label>
-                <select
-                  id="attendance-filter"
-                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                  value={attendanceFilter}
-                  onChange={(e) => setAttendanceFilter(e.target.value as typeof attendanceFilter)}
-                >
-                  <option value="all">All</option>
-                  <option value="attending">Attending</option>
-                  <option value="not_attending">Not attending</option>
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="shape-filter" className="text-xs">Type</Label>
-                <select
-                  id="shape-filter"
-                  className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                  value={inviteShapeFilter}
-                  onChange={(e) => setInviteShapeFilter(e.target.value as typeof inviteShapeFilter)}
-                >
-                  <option value="all">All</option>
-                  <option value="plus_one_allowed">Plus one allowed</option>
-                  <option value="has_children">Includes children</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mb-4 flex flex-wrap gap-3 items-end">
-              <div>
-                <Label htmlFor="sort-by" className="text-xs">Sort</Label>
-                <select
-                  id="sort-by"
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="name_asc">Name A-Z</option>
-                  <option value="name_desc">Name Z-A</option>
-                </select>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery('')
-                  setSentFilter('all')
-                  setResponseFilter('all')
-                  setAttendanceFilter('all')
-                  setInviteShapeFilter('all')
-                  setSortBy('newest')
-                }}
-              >
-                Reset Filters
-              </Button>
-            </div>
-
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={toggleSelectAllFiltered}
-                disabled={filteredInvites.length === 0}
-              >
-                {filteredInvites.length > 0 &&
-                filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
-                  ? 'Clear Filtered Selection'
-                  : 'Select All Filtered'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleBulkSendReminders}
-                disabled={bulkSending || selectedNonResponderIds.length === 0}
-              >
-                {bulkSending
-                  ? 'Sending Reminders...'
-                  : `Send Reminders (${selectedNonResponderIds.length})`}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExportSelectedCsv}
-                disabled={selectedInviteIds.length === 0}
-              >
-                Export Selected CSV ({selectedInviteIds.length})
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Selected in current view: {selectedFilteredCount}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={
-                        filteredInvites.length > 0 &&
-                        filteredInvites.every((invite) => selectedInviteIds.includes(invite.id))
-                      }
-                      onCheckedChange={toggleSelectAllFiltered}
-                      aria-label="Select all filtered invites"
-                    />
-                  </TableHead>
-                  <TableHead>Name/Group</TableHead>
-                  <TableHead>Guests</TableHead>
-                  <TableHead>Count</TableHead>
-                  <TableHead>Email Status</TableHead>
-                  <TableHead>RSVP Response</TableHead>
-                  <TableHead>RSVP Link</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvites.map((invite) => (
-                  <TableRow key={invite.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedInviteIds.includes(invite.id)}
-                        onCheckedChange={() => toggleInviteSelection(invite.id)}
-                        aria-label={`Select invite ${invite.groupName || invite.guests[0]?.name || invite.id}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {invite.groupName || invite.guests[0]?.name || 'Unknown'}
-                      {invite.plusOneAllowed && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          +1
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm space-y-1">
-                        {invite.guests.map((g) => (
-                          <div key={g.id} className="flex items-center gap-2">
-                            <span>{g.name}</span>
-                            {g.isChild && <Badge variant="secondary" className="text-[10px]">Child</Badge>}
-                            {!g.isChild && g.isInviteLead && (
-                              <Badge variant="outline" className="text-[10px]">Lead</Badge>
-                            )}
-                            {g.isPlusOne && (
-                              <Badge variant="secondary" className="text-[10px]">Plus-one</Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {invite.adultsCount}A {invite.childrenCount}C
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {invite.sentAt ? (
-                        <Badge className="bg-success text-success-foreground">
-                          Sent
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Not Sent</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {invite.rsvpStatus.hasResponded ? (
-                        <div className="space-y-1">
-                          <Badge
-                            className={
-                              invite.rsvpStatus.isAttending
-                                ? 'bg-success text-success-foreground'
-                                : 'bg-destructive text-destructive-foreground'
-                            }
-                          >
-                            {invite.rsvpStatus.isAttending
-                              ? '✓ Attending'
-                              : '✗ Not Attending'}
-                          </Badge>
-                          {invite.rsvpStatus.isAttending && (
-                            <div className="text-xs text-muted-foreground">
-                              {invite.rsvpStatus.adultsAttending}A{' '}
-                              {invite.rsvpStatus.childrenAttending}C
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <Badge variant="outline">No Response</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        /rsvp/{invite.token}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={sending === invite.id}
-                        onClick={() => handleSendEmail(invite.id)}
-                      >
-                        {sending === invite.id ? 'Sending...' : 'Send Email'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(invite.id)}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {filteredInvites.length === 0 && (
-              <div className="text-sm text-muted-foreground py-4 text-center">
-                No invites match the current filters.
-              </div>
-            )}
-            </div>
+            <InvitesTable
+              filteredInvites={filteredInvites}
+              selectedInviteIds={selectedInviteIds}
+              sending={sending}
+              onToggleSelectAllFiltered={toggleSelectAllFiltered}
+              onToggleInviteSelection={toggleInviteSelection}
+              onSendEmail={handleSendEmail}
+              onDelete={openDeleteConfirm}
+            />
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={confirmState !== null} onOpenChange={(open) => (!open ? closeConfirmDialog() : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmState?.type === 'delete' ? 'Delete Invite?' : 'Send Reminder Emails?'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmState?.type === 'delete'
+                ? `This will permanently delete ${confirmState.inviteLabel}.`
+                : `This will send reminder emails to ${confirmState?.type === 'reminders' ? confirmState.inviteIds.length : 0} invite(s) that were sent and have not RSVP'd.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeConfirmDialog}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={confirmState?.type === 'delete' ? 'destructive' : 'default'}
+              onClick={handleConfirmAction}
+            >
+              {confirmState?.type === 'delete' ? 'Delete Invite' : 'Send Reminders'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
