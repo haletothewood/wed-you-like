@@ -49,7 +49,7 @@ jobs:
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: npm run db:migrate
+        run: node scripts/migrate-libsql.mjs
 
       - name: Build app
         env:
