@@ -125,6 +125,39 @@ Notes:
 - Builds an isolated SQLite DB at `/tmp/wyl-playwright.sqlite.db` from repo migrations on each run.
 - Ensures an admin login exists: `admin / change-me-immediately`.
 
+## Production Release Flow
+
+Production deploys are now gated behind GitHub Actions:
+
+1. Open PR to `main`
+2. `Migration Guard` checks schema/migration consistency
+3. Merge PR
+4. `Release Production` workflow runs on `main`:
+   - backup production Turso DB (`.dump`) and upload as artifact
+   - apply migrations (`npm run db:migrate`)
+   - build app
+   - deploy to Vercel production
+
+`vercel.json` disables direct Vercel Git auto-deploys, so code does not deploy ahead of migrations.
+
+### Required GitHub Secrets
+
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+- `RESEND_API_KEY`
+- `BASE_URL`
+- `BLOB_HERO_IMAGE_ACCESS`
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+### Rollback
+
+1. Promote previous healthy deployment in Vercel (app rollback).
+2. If a DB rollback is required:
+   - download `turso-pre-migrate-backup-*` artifact from the failed `Release Production` run
+   - restore/import to Turso using your DB restore procedure
+
 ## Database Tasks
 
 ```bash
