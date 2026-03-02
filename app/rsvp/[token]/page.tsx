@@ -261,10 +261,10 @@ export default function RSVP() {
       if (jsConfetti.current) {
         jsConfetti.current.addConfetti({
           confettiColors: [
-            '#FFADAD', // Pastel Pink
-            '#FFD6A5', // Pastel Peach
-            '#FDFFB6', // Pastel Yellow
-            '#CAFFBF', // Pastel Green
+            '#c15b3b',
+            '#2f6f5e',
+            '#f0b558',
+            '#4a9b74',
           ],
           confettiNumber: 500,
         })
@@ -353,7 +353,7 @@ export default function RSVP() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="hero-wash min-h-screen flex items-center justify-center p-4">
         <LoadingSpinner text="Loading your invitation..." />
       </div>
     )
@@ -361,8 +361,8 @@ export default function RSVP() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md text-center">
+      <div className="hero-wash min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-border/70 bg-card/95 text-center shadow-xl">
           <CardHeader>
             <div className="text-6xl mb-4">😕</div>
             <CardTitle>Oops!</CardTitle>
@@ -377,11 +377,11 @@ export default function RSVP() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-lg text-center">
+      <div className="hero-wash min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg border-border/70 bg-card/95 text-center shadow-xl">
           <CardHeader>
             <div className="text-7xl mb-4">🎉</div>
-            <CardTitle className="text-3xl">Thank You!</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl">Thank You!</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-lg">
@@ -419,14 +419,14 @@ export default function RSVP() {
   if (isAttending === false) completedSteps = totalSteps
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent p-4 py-12">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Card className="text-center">
+    <div className="hero-wash min-h-screen p-4 py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-2xl space-y-4 sm:space-y-6">
+        <Card className="border-border/70 bg-card/95 text-center shadow-lg">
           <CardHeader>
             <div className="text-6xl mb-4">💒</div>
-            <CardTitle className="text-3xl">Wedding RSVP</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl">Wedding RSVP</CardTitle>
             <CardDescription className="text-lg">For: {displayName}</CardDescription>
-            <div className="pt-2 text-sm text-muted-foreground">
+            <div className="pt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.12em]">
               Step {Math.min(completedSteps + 1, totalSteps)} of {totalSteps}
             </div>
           </CardHeader>
@@ -484,7 +484,7 @@ export default function RSVP() {
             <CardHeader>
               <CardTitle>1. Will you be attending?</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <Button
                 type="button"
                 size="lg"
@@ -552,7 +552,7 @@ export default function RSVP() {
                       <Separator />
                       {attendingGuests.some(g => g.guestId === 'PLUS_ONE') ? (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center space-x-2">
                               <Badge variant="secondary">Plus One</Badge>
                               <span className="text-sm font-medium">
@@ -572,7 +572,7 @@ export default function RSVP() {
                       ) : (
                         <div className="space-y-2">
                           <Label htmlFor="plusOne">Add Plus One (Optional)</Label>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
                               id="plusOne"
                               type="text"
@@ -806,7 +806,7 @@ export default function RSVP() {
             </>
           )}
 
-          <Card className="bg-muted/30">
+          <Card className="border-border/70 bg-muted/45">
             <CardContent className="pt-6">
               <Button
                 type="submit"

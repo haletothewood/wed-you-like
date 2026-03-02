@@ -150,7 +150,7 @@ export default function CustomQuestionsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Custom Questions Management"
         description="Add custom questions for guests to answer with their RSVP"
@@ -208,7 +208,7 @@ export default function CustomQuestionsPage() {
                 <Label>Options</Label>
                 <div className="space-y-2">
                   {options.map((option, index) => (
-                    <div key={index} className="flex gap-2">
+                    <div key={index} className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         type="text"
                         value={option}
@@ -253,7 +253,7 @@ export default function CustomQuestionsPage() {
               </Label>
             </div>
 
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? 'Adding...' : 'Add Question'}
             </Button>
           </form>

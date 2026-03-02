@@ -69,7 +69,7 @@ export default function PhotoUploadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="hero-wash min-h-screen flex items-center justify-center p-4">
         <LoadingSpinner text="Loading your photo upload link..." />
       </div>
     )
@@ -77,8 +77,8 @@ export default function PhotoUploadPage() {
 
   if (error || !invite) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md text-center">
+      <div className="hero-wash min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-border/70 bg-card/95 text-center">
           <CardHeader>
             <CardTitle>Unable to Open Upload Link</CardTitle>
           </CardHeader>
@@ -93,9 +93,9 @@ export default function PhotoUploadPage() {
   const displayName = invite.groupName || invite.guests[0]?.name || 'Guest'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent p-4 py-12">
-      <div className="max-w-2xl mx-auto">
-        <Card>
+    <div className="hero-wash min-h-screen p-4 py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-2xl">
+        <Card className="border-border/70 bg-card/95 shadow-xl">
           <CardHeader>
             <CardTitle>Share Your Wedding Photos</CardTitle>
             <CardDescription>
@@ -103,7 +103,7 @@ export default function PhotoUploadPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-2 items-start md:items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -136,7 +136,7 @@ export default function PhotoUploadPage() {
                       href={url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block text-sm text-primary underline truncate"
+                      className="block truncate text-sm text-secondary underline decoration-secondary/60 underline-offset-2"
                     >
                       {url}
                     </a>

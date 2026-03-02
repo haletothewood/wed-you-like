@@ -82,13 +82,13 @@ export default function Admin() {
   ] as const
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Dashboard"
         description="Welcome to your wedding RSVP management system"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
         {features.map((feature) => (
           feature.enabled ? (
             <Link key={feature.href} href={feature.href}>
@@ -112,9 +112,9 @@ export default function Admin() {
         ))}
       </div>
 
-      <Card className="mt-6 bg-muted/50 border-primary/20">
+      <Card className="mt-6 border-primary/20 bg-muted/50">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-lg">Quick Stats</CardTitle>
               <CardDescription>
@@ -122,7 +122,7 @@ export default function Admin() {
               </CardDescription>
             </div>
             <Link href="/admin/reports">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 View Full Reports →
               </Button>
             </Link>
@@ -132,21 +132,21 @@ export default function Admin() {
           {loading ? (
             <div className="text-center text-muted-foreground py-4">Loading stats...</div>
           ) : stats ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">{stats.totalInvites}</div>
+                <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalInvites}</div>
                 <div className="text-sm text-muted-foreground mt-1">Total Invites</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary">{stats.totalRsvps}</div>
+                <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalRsvps}</div>
                 <div className="text-sm text-muted-foreground mt-1">RSVPs Received</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-success">{stats.attending}</div>
+                <div className="text-2xl font-bold text-success sm:text-3xl">{stats.attending}</div>
                 <div className="text-sm text-muted-foreground mt-1">Attending</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-success">{stats.totalGuestsAttending}</div>
+                <div className="text-2xl font-bold text-success sm:text-3xl">{stats.totalGuestsAttending}</div>
                 <div className="text-sm text-muted-foreground mt-1">Total Guests</div>
               </div>
             </div>

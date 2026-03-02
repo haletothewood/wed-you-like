@@ -128,7 +128,7 @@ export default function ReportsPage() {
 
   if (!data) {
     return (
-      <div className="p-4 md:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <PageHeader title="Reports & Statistics" description="View wedding RSVP statistics and export data" />
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
@@ -144,17 +144,17 @@ export default function ReportsPage() {
     : 0
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Reports & Statistics"
         description="View wedding RSVP statistics and export data for your venue"
       />
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-4xl font-bold text-primary">{data.overview.totalInvites}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-primary sm:text-4xl">{data.overview.totalInvites}</CardTitle>
             <CardDescription>Total Invites Created</CardDescription>
           </CardHeader>
           <CardContent>
@@ -166,7 +166,7 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-4xl font-bold text-success">{data.overview.totalRsvps}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-success sm:text-4xl">{data.overview.totalRsvps}</CardTitle>
             <CardDescription>Total Responses</CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,7 +178,7 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-4xl font-bold text-accent">{data.overview.totalGuestsAttending}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-accent sm:text-4xl">{data.overview.totalGuestsAttending}</CardTitle>
             <CardDescription>Total Guests Attending</CardDescription>
           </CardHeader>
           <CardContent>
@@ -195,7 +195,7 @@ export default function ReportsPage() {
           <CardTitle>RSVP Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="text-center p-4 bg-success/10 rounded-lg">
               <div className="text-3xl font-bold text-success">{data.overview.attending}</div>
               <div className="text-sm text-muted-foreground mt-1">Attending</div>
@@ -232,7 +232,7 @@ export default function ReportsPage() {
               </h3>
               <div className="space-y-2">
                 {data.mealCounts.STARTER.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div key={index} className="flex flex-col gap-2 rounded-lg bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-medium">{item.name}</div>
                       {item.description && (
@@ -258,7 +258,7 @@ export default function ReportsPage() {
               </h3>
               <div className="space-y-2">
                 {data.mealCounts.MAIN.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div key={index} className="flex flex-col gap-2 rounded-lg bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-medium">{item.name}</div>
                       {item.description && (
@@ -284,7 +284,7 @@ export default function ReportsPage() {
               </h3>
               <div className="space-y-2">
                 {data.mealCounts.DESSERT.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div key={index} className="flex flex-col gap-2 rounded-lg bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-medium">{item.name}</div>
                       {item.description && (
@@ -315,7 +315,7 @@ export default function ReportsPage() {
           <CardDescription>Download reports as CSV files to share with your venue</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <h4 className="font-medium mb-2">Venue Report (Recommended)</h4>
               <p className="text-sm text-muted-foreground mb-3">
@@ -360,6 +360,7 @@ export default function ReportsPage() {
             onClick={handleSendReminderCampaign}
             disabled={sendingReminderCampaign}
             variant="secondary"
+            className="w-full sm:w-auto"
           >
             {sendingReminderCampaign ? 'Sending...' : 'Send RSVP Reminders'}
           </Button>
@@ -377,6 +378,7 @@ export default function ReportsPage() {
           <Button
             onClick={handleSendPhotoShareCampaign}
             disabled={sendingPhotoCampaign}
+            className="w-full sm:w-auto"
           >
             {sendingPhotoCampaign ? 'Sending...' : 'Send Photo Share Emails'}
           </Button>

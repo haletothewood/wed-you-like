@@ -379,12 +379,12 @@ export default function InvitesAdmin() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Invite Management"
         description="Create and manage wedding invitations"
         action={
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto">
             {showForm ? 'Cancel' : 'Create Invite'}
           </Button>
         }
@@ -399,7 +399,7 @@ export default function InvitesAdmin() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 variant={inviteType === 'individual' ? 'default' : 'outline'}
                 onClick={() => setInviteType('individual')}
@@ -829,22 +829,24 @@ export default function InvitesAdmin() {
                         /rsvp/{invite.token}
                       </code>
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={sending === invite.id}
-                        onClick={() => handleSendEmail(invite.id)}
-                      >
-                        {sending === invite.id ? 'Sending...' : 'Send Email'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(invite.id)}
-                      >
-                        Delete
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={sending === invite.id}
+                          onClick={() => handleSendEmail(invite.id)}
+                        >
+                          {sending === invite.id ? 'Sending...' : 'Send Email'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(invite.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
