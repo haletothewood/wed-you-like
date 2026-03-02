@@ -136,7 +136,7 @@ export default function MealOptionsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Meal Options Management"
         description="Configure menu options for starters, mains, and desserts"
@@ -193,7 +193,7 @@ export default function MealOptionsPage() {
               />
             </div>
 
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? 'Adding...' : 'Add Meal Option'}
             </Button>
           </form>
@@ -218,7 +218,7 @@ export default function MealOptionsPage() {
                     className={!option.isAvailable ? 'opacity-60' : ''}
                   >
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex-1">
                           <CardTitle className="flex items-center gap-2">
                             {option.name}
@@ -232,7 +232,7 @@ export default function MealOptionsPage() {
                             </CardDescription>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             variant={option.isAvailable ? 'outline' : 'default'}
                             size="sm"

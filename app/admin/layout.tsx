@@ -41,7 +41,7 @@ export default function AdminLayout({
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen overflow-hidden md:h-screen">
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
@@ -52,22 +52,22 @@ export default function AdminLayout({
 
       {/* Sidebar - Hidden on mobile, slides in when menu open */}
       <aside className={cn(
-        "w-64 bg-gradient-to-b from-primary/90 to-primary text-primary-foreground sticky top-0 h-screen flex flex-col z-50",
-        "fixed md:static transition-transform duration-300",
+        "w-72 max-w-[85vw] border-r border-border/60 bg-secondary text-secondary-foreground sticky top-0 h-screen flex flex-col z-50",
+        "fixed md:static transition-transform duration-300 ease-out",
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className="p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Wedding Admin</h2>
+        <div className="p-4 sm:p-5 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Wedding Admin</h2>
           {/* Close button for mobile */}
           <button
             onClick={closeMobileMenu}
-            className="md:hidden text-2xl hover:bg-primary-foreground/10 rounded p-1"
+            className="md:hidden text-2xl hover:bg-secondary-foreground/10 rounded p-1"
           >
             ×
           </button>
         </div>
 
-        <Separator className="bg-primary-foreground/20" />
+        <Separator className="bg-secondary-foreground/20" />
 
         <nav className="flex-1 py-4">
           <ul className="space-y-1">
@@ -80,9 +80,9 @@ export default function AdminLayout({
                     onClick={closeMobileMenu}
                     className={cn(
                       'flex items-center gap-3 px-6 py-3 transition-all',
-                      'border-l-4 hover:bg-primary-foreground/10',
+                      'border-l-4 hover:bg-secondary-foreground/10',
                       isActive
-                        ? 'bg-primary-foreground/20 border-accent font-semibold'
+                        ? 'bg-secondary-foreground/15 border-accent font-semibold'
                         : 'border-transparent'
                     )}
                   >
@@ -95,7 +95,7 @@ export default function AdminLayout({
           </ul>
         </nav>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-5">
           <Button
             onClick={handleLogout}
             disabled={loggingOut}
@@ -108,19 +108,19 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 w-full h-screen overflow-y-auto">
-        <div className="bg-card border-b sticky top-0 z-10 shadow-sm">
-          <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6">
+      <main className="flex-1 w-full min-h-screen overflow-y-auto md:h-screen">
+        <div className="bg-card/95 backdrop-blur border-b sticky top-0 z-10 shadow-sm">
+          <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center gap-4">
               {/* Hamburger Menu Button - Only on Mobile */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden text-2xl text-foreground p-2 hover:bg-muted rounded"
+                className="md:hidden text-2xl text-foreground p-2 hover:bg-muted/70 rounded"
                 aria-label="Open menu"
               >
                 ☰
               </button>
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground">
                 {navItems.find(item => item.href === pathname)?.label || 'Admin'}
               </h1>
             </div>
@@ -129,7 +129,7 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
-        <div className="bg-background min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)]">
+        <div className="bg-background min-h-[calc(100vh-4rem)]">
           {children}
         </div>
       </main>

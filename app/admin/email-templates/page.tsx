@@ -476,12 +476,12 @@ export default function EmailTemplatesPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Email Templates"
         description="Manage email templates for invitations and thank you messages"
         action={
-          <Button onClick={openCreateForm}>
+          <Button onClick={openCreateForm} className="w-full sm:w-auto">
             Create Template
           </Button>
         }
@@ -505,7 +505,7 @@ export default function EmailTemplatesPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="template-name">
                     Name <span className="text-destructive">*</span>
@@ -584,7 +584,7 @@ export default function EmailTemplatesPage() {
                     contexts.
                   </p>
                 )}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <Input
                     key={heroImageInputKey}
                     id="template-hero-file"
@@ -622,14 +622,14 @@ export default function EmailTemplatesPage() {
               </div>
 
               <div className="rounded-md border p-4 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium">Template Editor Mode</p>
                     <p className="text-xs text-muted-foreground">
                       Guided mode generates HTML. Raw mode gives full HTML control.
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       type="button"
                       variant={editorMode === 'guided' ? 'default' : 'outline'}
@@ -649,7 +649,7 @@ export default function EmailTemplatesPage() {
 
                 {editorMode === 'guided' ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <Label htmlFor="guided-hero-title">Hero title</Label>
                         <Input
@@ -723,7 +723,7 @@ export default function EmailTemplatesPage() {
                       />
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                       <Button type="button" onClick={applyGuidedTemplate}>
                         Apply Guided Template to HTML
                       </Button>
@@ -775,7 +775,7 @@ export default function EmailTemplatesPage() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Optional placeholders are safe to use. If the value is missing, it renders as blank.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {templateVariables.map((variable) => (
                     <div key={variable.key} className="text-xs">
                       <code>{`{{${variable.key}}}`}</code>
@@ -797,7 +797,7 @@ export default function EmailTemplatesPage() {
                     Sends this current subject and HTML content to a test inbox.
                   </p>
                 </div>
-                <div className="flex flex-col md:flex-row gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     type="email"
                     value={testEmail}
@@ -820,11 +820,11 @@ export default function EmailTemplatesPage() {
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={submitting}>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
                   {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Create Template'}
                 </Button>
-                <Button type="button" variant="outline" onClick={handleCancel} disabled={submitting}>
+                <Button type="button" variant="outline" onClick={handleCancel} disabled={submitting} className="w-full sm:w-auto">
                   Cancel
                 </Button>
               </div>
@@ -844,7 +844,7 @@ export default function EmailTemplatesPage() {
           {templates.map((template) => (
             <Card key={template.id}>
               <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <CardTitle>{template.name}</CardTitle>
                     <CardDescription className="flex items-center gap-2 mt-2">
@@ -856,7 +856,7 @@ export default function EmailTemplatesPage() {
                       </Badge>
                     </CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       variant="outline"
                       onClick={() => openEditForm(template)}

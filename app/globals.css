@@ -4,75 +4,74 @@
 
 @layer base {
   :root {
-    /* Pastel Color Palette */
-    --background: 0 0% 99%; /* Almost white background */
-    --foreground: 0 0% 20%; /* Dark text for readability */
+    --background: 34 37% 96%;
+    --foreground: 24 23% 18%;
 
-    --card: 0 0% 100%; /* Pure white for cards */
-    --card-foreground: 0 0% 20%;
+    --card: 36 29% 99%;
+    --card-foreground: 24 23% 18%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
+    --popover: 36 29% 99%;
+    --popover-foreground: 24 23% 18%;
 
-    --primary: 0 100% 84%; /* Pastel Pink #FFADAD */
-    --primary-foreground: 0 0% 20%;
+    --primary: 16 59% 45%;
+    --primary-foreground: 35 58% 97%;
 
-    --secondary: 33 100% 82%; /* Pastel Peach #FFD6A5 */
-    --secondary-foreground: 33 30% 20%;
+    --secondary: 167 31% 30%;
+    --secondary-foreground: 42 45% 96%;
 
-    --accent: 62 100% 86%; /* Pastel Yellow #FDFFB6 */
-    --accent-foreground: 62 30% 20%;
+    --accent: 39 84% 67%;
+    --accent-foreground: 28 34% 17%;
 
-    --muted: 110 50% 95%; /* Very light pastel green */
-    --muted-foreground: 110 20% 40%;
+    --muted: 34 26% 90%;
+    --muted-foreground: 24 15% 35%;
 
-    --success: 110 100% 87%; /* Pastel Green #CAFFBF */
-    --success-foreground: 110 30% 20%;
+    --success: 148 41% 36%;
+    --success-foreground: 0 0% 98%;
 
-    --destructive: 0 85% 70%; /* Slightly deeper coral for destructive actions */
+    --destructive: 2 72% 52%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 100% 84%;
+    --border: 30 24% 80%;
+    --input: 30 24% 84%;
+    --ring: 16 59% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Additional pastel colors for specific use cases */
-    --info: 200 85% 85%; /* Pastel blue for info */
+    --info: 206 58% 43%;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
+    --background: 210 19% 11%;
+    --foreground: 34 40% 95%;
 
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
+    --card: 210 17% 14%;
+    --card-foreground: 34 40% 95%;
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 210 17% 14%;
+    --popover-foreground: 34 40% 95%;
 
-    --primary: 0 100% 84%;
-    --primary-foreground: 0 0% 20%;
+    --primary: 16 64% 56%;
+    --primary-foreground: 210 20% 12%;
 
-    --secondary: 33 100% 82%;
-    --secondary-foreground: 33 30% 20%;
+    --secondary: 169 36% 42%;
+    --secondary-foreground: 210 20% 10%;
 
-    --accent: 62 100% 86%;
-    --accent-foreground: 62 30% 20%;
+    --accent: 39 87% 61%;
+    --accent-foreground: 210 20% 10%;
 
-    --muted: 110 20% 20%;
-    --muted-foreground: 110 20% 80%;
+    --muted: 210 14% 20%;
+    --muted-foreground: 35 20% 73%;
 
-    --success: 110 100% 87%;
-    --success-foreground: 110 30% 20%;
+    --success: 150 45% 46%;
+    --success-foreground: 210 20% 10%;
 
-    --destructive: 0 85% 70%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 2 79% 62%;
+    --destructive-foreground: 210 20% 10%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 100% 84%;
+    --border: 210 13% 26%;
+    --input: 210 13% 24%;
+    --ring: 16 64% 56%;
+    --info: 206 58% 57%;
   }
 }
 
@@ -82,7 +81,34 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-image:
+      radial-gradient(circle at 18% -10%, hsl(var(--accent) / 0.16), transparent 42%),
+      radial-gradient(circle at 82% 0%, hsl(var(--secondary) / 0.14), transparent 38%),
+      linear-gradient(
+        180deg,
+        hsl(var(--background)) 0%,
+        hsl(var(--background)) 55%,
+        hsl(var(--muted) / 0.38) 100%
+      );
+    font-family: 'Avenir Next', 'Nunito Sans', 'Trebuchet MS', sans-serif;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: 'Iowan Old Style', Baskerville, 'Palatino Linotype', Palatino, serif;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer utilities {
+  .hero-wash {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--accent) / 0.22), transparent 45%),
+      radial-gradient(circle at bottom right, hsl(var(--secondary) / 0.2), transparent 42%),
+      linear-gradient(160deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.5) 100%);
   }
 }
