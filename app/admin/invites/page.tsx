@@ -6,11 +6,13 @@ import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Table,
   TableBody,
@@ -60,11 +62,94 @@ interface Invite {
   }
 }
 
+interface BulkInviteRow {
+  lineNumber: number
+  guestName: string
+  email: string
+  plusOneAllowed: boolean
+  rawPlusOne: string
+  errors: string[]
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const parsePlusOneValue = (
+  value: string
+): { value: boolean; valid: boolean } => {
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return { value: false, valid: true }
+  if (['true', 'yes', 'y', '1'].includes(normalized)) return { value: true, valid: true }
+  if (['false', 'no', 'n', '0'].includes(normalized)) return { value: false, valid: true }
+  return { value: false, valid: false }
+}
+
+const parseBulkInviteInput = (input: string): BulkInviteRow[] => {
+  const lines = input.split(/\r?\n/)
+  const nonEmptyLines = lines
+    .map((line, index) => ({ line: line.trim(), lineNumber: index + 1 }))
+    .filter((entry) => entry.line.length > 0)
+
+  if (nonEmptyLines.length === 0) return []
+
+  const firstLine = nonEmptyLines[0].line.toLowerCase()
+  const hasHeader =
+    firstLine.includes('name') && firstLine.includes('email')
+
+  const rowsToParse = hasHeader ? nonEmptyLines.slice(1) : nonEmptyLines
+
+  const parsedRows = rowsToParse.map(({ line, lineNumber }) => {
+    const columns = line
+      .split(/,|\t/)
+      .map((column) => column.trim())
+
+    const guestName = columns[0] || ''
+    const email = columns[1] || ''
+    const rawPlusOne = columns[2] || ''
+    const plusOneParsed = parsePlusOneValue(rawPlusOne)
+    const errors: string[] = []
+
+    if (!guestName) errors.push('Missing guest name')
+    if (!email) errors.push('Missing email')
+    if (email && !EMAIL_PATTERN.test(email)) errors.push('Invalid email')
+    if (!plusOneParsed.valid) errors.push('Plus one must be yes/no, true/false, 1/0')
+
+    return {
+      lineNumber,
+      guestName,
+      email,
+      plusOneAllowed: plusOneParsed.value,
+      rawPlusOne,
+      errors,
+    }
+  })
+
+  const emailCounts = parsedRows.reduce<Record<string, number>>((acc, row) => {
+    const key = row.email.trim().toLowerCase()
+    if (!key) return acc
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+
+  return parsedRows.map((row) => {
+    const key = row.email.trim().toLowerCase()
+    if (key && emailCounts[key] > 1) {
+      return { ...row, errors: [...row.errors, 'Duplicate email in bulk list'] }
+    }
+    return row
+  })
+}
+
+const BULK_TEMPLATE_CSV = `name,email,plusOneAllowed
+Alex Smith,alex@example.com,yes
+Jamie Lee,jamie@example.com,no
+Taylor Morgan,taylor@example.com,true
+`
+
 export default function InvitesAdmin() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [inviteType, setInviteType] = useState<'individual' | 'group'>('individual')
+  const [inviteType, setInviteType] = useState<'individual' | 'group' | 'bulk'>('individual')
   const [sending, setSending] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sentFilter, setSentFilter] = useState<'all' | 'sent' | 'not_sent'>('all')
@@ -98,6 +183,14 @@ export default function InvitesAdmin() {
     { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
     { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
   ])
+  const [bulkInput, setBulkInput] = useState('')
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkLoadingFile, setBulkLoadingFile] = useState(false)
+  const [bulkSummary, setBulkSummary] = useState<{
+    created: number
+    failed: number
+    failures: Array<{ lineNumber: number; message: string }>
+  } | null>(null)
 
   useEffect(() => {
     fetchInvites()
@@ -166,6 +259,93 @@ export default function InvitesAdmin() {
       }
     } catch (error) {
       console.error('Error creating group invite:', error)
+    }
+  }
+
+  const parsedBulkRows = useMemo(() => parseBulkInviteInput(bulkInput), [bulkInput])
+  const bulkValidRows = useMemo(
+    () => parsedBulkRows.filter((row) => row.errors.length === 0),
+    [parsedBulkRows]
+  )
+  const bulkInvalidRows = useMemo(
+    () => parsedBulkRows.filter((row) => row.errors.length > 0),
+    [parsedBulkRows]
+  )
+
+  const handleCreateBulk = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (bulkValidRows.length === 0 || bulkInvalidRows.length > 0) return
+
+    setBulkSubmitting(true)
+    setBulkSummary(null)
+    const failures: Array<{ lineNumber: number; message: string }> = []
+    let created = 0
+
+    for (const row of bulkValidRows) {
+      try {
+        const response = await fetch('/api/admin/invites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'individual',
+            guestName: row.guestName,
+            email: row.email,
+            plusOneAllowed: row.plusOneAllowed,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          failures.push({
+            lineNumber: row.lineNumber,
+            message: data.error || 'Failed to create invite',
+          })
+          continue
+        }
+
+        created++
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to create invite'
+        failures.push({ lineNumber: row.lineNumber, message })
+      }
+    }
+
+    setBulkSummary({
+      created,
+      failed: failures.length,
+      failures,
+    })
+    setBulkSubmitting(false)
+
+    if (created > 0) {
+      await fetchInvites()
+    }
+  }
+
+  const handleDownloadBulkTemplate = () => {
+    const blob = new Blob([BULK_TEMPLATE_CSV], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'invite-bulk-template.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleBulkFileUpload = async (file: File) => {
+    setBulkLoadingFile(true)
+    setBulkSummary(null)
+
+    try {
+      const text = await file.text()
+      setBulkInput(text)
+    } catch (error) {
+      console.error('Failed to read bulk invite file:', error)
+      alert('Failed to read file. Please upload a valid CSV or text file.')
+    } finally {
+      setBulkLoadingFile(false)
     }
   }
 
@@ -412,6 +592,12 @@ export default function InvitesAdmin() {
               >
                 Group
               </Button>
+              <Button
+                variant={inviteType === 'bulk' ? 'default' : 'outline'}
+                onClick={() => setInviteType('bulk')}
+              >
+                Bulk
+              </Button>
             </div>
 
             <Separator />
@@ -456,7 +642,7 @@ export default function InvitesAdmin() {
 
                 <Button type="submit">Create Individual Invite</Button>
               </form>
-            ) : (
+            ) : inviteType === 'group' ? (
               <form onSubmit={handleCreateGroup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="groupName">
@@ -573,6 +759,150 @@ export default function InvitesAdmin() {
                 </div>
 
                 <Button type="submit">Create Group Invite</Button>
+              </form>
+            ) : (
+              <form onSubmit={handleCreateBulk} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-invites">
+                    Paste bulk invites <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      id="bulk-file-upload"
+                      type="file"
+                      accept=".csv,text/csv,.txt,text/plain"
+                      disabled={bulkLoadingFile || bulkSubmitting}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        void handleBulkFileUpload(file)
+                        e.currentTarget.value = ''
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadBulkTemplate}
+                      className="w-full sm:w-auto"
+                    >
+                      Download CSV Template
+                    </Button>
+                  </div>
+                  {bulkLoadingFile && (
+                    <p className="text-xs text-muted-foreground">Loading file...</p>
+                  )}
+                  <Textarea
+                    id="bulk-invites"
+                    value={bulkInput}
+                    onChange={(e) => {
+                      setBulkInput(e.target.value)
+                      setBulkSummary(null)
+                    }}
+                    rows={10}
+                    placeholder={`name,email,plusOneAllowed\nAlex Smith,alex@example.com,yes\nJamie Lee,jamie@example.com,no`}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Format: name, email, plusOneAllowed (optional). Accepted plus-one values: yes/no, true/false, 1/0.
+                  </p>
+                </div>
+
+                {parsedBulkRows.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Rows: {parsedBulkRows.length}</Badge>
+                    <Badge className="bg-success text-success-foreground">
+                      Valid: {bulkValidRows.length}
+                    </Badge>
+                    <Badge variant={bulkInvalidRows.length > 0 ? 'destructive' : 'outline'}>
+                      Invalid: {bulkInvalidRows.length}
+                    </Badge>
+                  </div>
+                )}
+
+                {bulkInvalidRows.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      <p className="mb-1 font-medium">Fix these rows before creating invites:</p>
+                      <ul className="list-disc pl-5">
+                        {bulkInvalidRows.slice(0, 8).map((row) => (
+                          <li key={`invalid-${row.lineNumber}`}>
+                            Line {row.lineNumber}: {row.errors.join(', ')}
+                          </li>
+                        ))}
+                      </ul>
+                      {bulkInvalidRows.length > 8 && (
+                        <p className="mt-2 text-xs">
+                          +{bulkInvalidRows.length - 8} more invalid rows
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {bulkSummary && (
+                  <Alert variant={bulkSummary.failed > 0 ? 'destructive' : 'default'}>
+                    <AlertDescription>
+                      <p>
+                        Created {bulkSummary.created} invite{bulkSummary.created === 1 ? '' : 's'}.
+                        {bulkSummary.failed > 0 &&
+                          ` ${bulkSummary.failed} failed.`}
+                      </p>
+                      {bulkSummary.failures.length > 0 && (
+                        <ul className="list-disc pl-5 mt-2">
+                          {bulkSummary.failures.slice(0, 8).map((failure, index) => (
+                            <li key={`${failure.lineNumber}-${index}`}>
+                              Line {failure.lineNumber}: {failure.message}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {bulkValidRows.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Preview</Label>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Line</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Plus One</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bulkValidRows.slice(0, 10).map((row) => (
+                            <TableRow key={`preview-${row.lineNumber}`}>
+                              <TableCell>{row.lineNumber}</TableCell>
+                              <TableCell>{row.guestName}</TableCell>
+                              <TableCell>{row.email}</TableCell>
+                              <TableCell>{row.plusOneAllowed ? 'Yes' : 'No'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {bulkValidRows.length > 10 && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing first 10 of {bulkValidRows.length} valid rows.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={
+                    bulkSubmitting || bulkValidRows.length === 0 || bulkInvalidRows.length > 0
+                  }
+                >
+                  {bulkSubmitting
+                    ? 'Creating invites...'
+                    : `Create ${bulkValidRows.length} Invite${bulkValidRows.length === 1 ? '' : 's'}`}
+                </Button>
               </form>
             )}
           </CardContent>
