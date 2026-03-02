@@ -4,9 +4,13 @@ import { RSVP } from '@/domain/entities/RSVP'
 import { db } from '../connection'
 import { rsvps } from '../schema'
 
+type RSVPDatabase = Pick<typeof db, 'insert' | 'query'>
+
 export class DrizzleRSVPRepository implements RSVPRepository {
+  constructor(private database: RSVPDatabase = db) {}
+
   async save(rsvp: RSVP): Promise<void> {
-    await db
+    await this.database
       .insert(rsvps)
       .values({
         id: rsvp.id,
@@ -32,7 +36,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
   }
 
   async findByInviteId(inviteId: string): Promise<RSVP | null> {
-    const record = await db.query.rsvps.findFirst({
+    const record = await this.database.query.rsvps.findFirst({
       where: eq(rsvps.inviteId, inviteId),
     })
 
@@ -48,7 +52,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
       return new Map()
     }
 
-    const records = await db.query.rsvps.findMany({
+    const records = await this.database.query.rsvps.findMany({
       where: inArray(rsvps.inviteId, inviteIds),
     })
 
@@ -61,7 +65,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
   }
 
   async findById(id: string): Promise<RSVP | null> {
-    const record = await db.query.rsvps.findFirst({
+    const record = await this.database.query.rsvps.findFirst({
       where: eq(rsvps.id, id),
     })
 

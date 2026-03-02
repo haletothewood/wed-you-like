@@ -8,11 +8,15 @@ import {
 import type { MealSelectionRepository } from '@/domain/repositories/MealSelectionRepository'
 import type { CourseType } from '@/domain/entities/MealOption'
 
+type MealSelectionDatabase = Pick<typeof db, 'insert' | 'delete' | 'query'>
+
 export class DrizzleMealSelectionRepository
   implements MealSelectionRepository
 {
+  constructor(private database: MealSelectionDatabase = db) {}
+
   async save(mealSelection: MealSelection): Promise<void> {
-    await db
+    await this.database
       .insert(mealSelections)
       .values({
         id: mealSelection.id,
@@ -32,7 +36,7 @@ export class DrizzleMealSelectionRepository
   async saveMany(selections: MealSelection[]): Promise<void> {
     if (selections.length === 0) return
 
-    await db.insert(mealSelections).values(
+    await this.database.insert(mealSelections).values(
       selections.map((selection) => ({
         id: selection.id,
         guestId: selection.guestId,
@@ -44,7 +48,7 @@ export class DrizzleMealSelectionRepository
   }
 
   async findByGuestId(guestId: string): Promise<MealSelection[]> {
-    const records = await db.query.mealSelections.findMany({
+    const records = await this.database.query.mealSelections.findMany({
       where: eq(mealSelections.guestId, guestId),
     })
 
@@ -52,7 +56,7 @@ export class DrizzleMealSelectionRepository
   }
 
   async deleteByGuestId(guestId: string): Promise<void> {
-    await db.delete(mealSelections).where(eq(mealSelections.guestId, guestId))
+    await this.database.delete(mealSelections).where(eq(mealSelections.guestId, guestId))
   }
 
   private toDomain(record: {

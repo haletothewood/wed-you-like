@@ -7,11 +7,15 @@ import {
 } from '@/domain/entities/QuestionResponse'
 import type { QuestionResponseRepository } from '@/domain/repositories/QuestionResponseRepository'
 
+type QuestionResponseDatabase = Pick<typeof db, 'insert' | 'delete' | 'query'>
+
 export class DrizzleQuestionResponseRepository
   implements QuestionResponseRepository
 {
+  constructor(private database: QuestionResponseDatabase = db) {}
+
   async save(response: QuestionResponse): Promise<void> {
-    await db
+    await this.database
       .insert(questionResponses)
       .values({
         id: response.id,
@@ -31,7 +35,7 @@ export class DrizzleQuestionResponseRepository
   async saveMany(responses: QuestionResponse[]): Promise<void> {
     if (responses.length === 0) return
 
-    await db.insert(questionResponses).values(
+    await this.database.insert(questionResponses).values(
       responses.map((response) => ({
         id: response.id,
         rsvpId: response.rsvpId,
@@ -43,7 +47,7 @@ export class DrizzleQuestionResponseRepository
   }
 
   async findByRSVPId(rsvpId: string): Promise<QuestionResponse[]> {
-    const records = await db.query.questionResponses.findMany({
+    const records = await this.database.query.questionResponses.findMany({
       where: eq(questionResponses.rsvpId, rsvpId),
     })
 
@@ -51,7 +55,7 @@ export class DrizzleQuestionResponseRepository
   }
 
   async deleteByRSVPId(rsvpId: string): Promise<void> {
-    await db
+    await this.database
       .delete(questionResponses)
       .where(eq(questionResponses.rsvpId, rsvpId))
   }

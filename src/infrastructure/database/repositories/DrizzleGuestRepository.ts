@@ -3,11 +3,15 @@ import { db } from '../connection'
 import { guests } from '../schema'
 import type { GuestRepository, GuestData } from '@/domain/repositories/GuestRepository'
 
+type GuestDatabase = Pick<typeof db, 'insert' | 'delete' | 'query'>
+
 export class DrizzleGuestRepository implements GuestRepository {
+  constructor(private database: GuestDatabase = db) {}
+
   async save(guest: GuestData): Promise<GuestData> {
     const now = new Date()
 
-    await db
+    await this.database
       .insert(guests)
       .values({
         id: guest.id,
@@ -38,7 +42,7 @@ export class DrizzleGuestRepository implements GuestRepository {
   }
 
   async findById(id: string): Promise<GuestData | null> {
-    const record = await db.query.guests.findFirst({
+    const record = await this.database.query.guests.findFirst({
       where: eq(guests.id, id),
     })
 
@@ -57,7 +61,7 @@ export class DrizzleGuestRepository implements GuestRepository {
   }
 
   async findByInviteId(inviteId: string): Promise<GuestData[]> {
-    const records = await db.query.guests.findMany({
+    const records = await this.database.query.guests.findMany({
       where: eq(guests.inviteId, inviteId),
     })
 
@@ -74,7 +78,7 @@ export class DrizzleGuestRepository implements GuestRepository {
   }
 
   async findPlusOneByInviteId(inviteId: string): Promise<GuestData | null> {
-    const record = await db.query.guests.findFirst({
+    const record = await this.database.query.guests.findFirst({
       where: and(eq(guests.inviteId, inviteId), eq(guests.isPlusOne, true)),
     })
 
@@ -93,6 +97,6 @@ export class DrizzleGuestRepository implements GuestRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await db.delete(guests).where(eq(guests.id, id))
+    await this.database.delete(guests).where(eq(guests.id, id))
   }
 }
