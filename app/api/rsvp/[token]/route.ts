@@ -6,6 +6,7 @@ import { DrizzleCustomQuestionRepository } from '@/infrastructure/database/repos
 import { DrizzleMealSelectionRepository } from '@/infrastructure/database/repositories/DrizzleMealSelectionRepository'
 import { DrizzleQuestionResponseRepository } from '@/infrastructure/database/repositories/DrizzleQuestionResponseRepository'
 import { DrizzleGuestRepository } from '@/infrastructure/database/repositories/DrizzleGuestRepository'
+import { db } from '@/infrastructure/database/connection'
 import { rsvpReadRateLimiter, rsvpWriteRateLimiter } from '@/infrastructure/security/RateLimiter'
 import { GetInviteByToken } from '@/application/use-cases/GetInviteByToken'
 import { SubmitRSVP } from '@/application/use-cases/SubmitRSVP'
@@ -15,9 +16,6 @@ const inviteRepository = new DrizzleInviteRepository()
 const rsvpRepository = new DrizzleRSVPRepository()
 const mealOptionRepository = new DrizzleMealOptionRepository()
 const customQuestionRepository = new DrizzleCustomQuestionRepository()
-const mealSelectionRepository = new DrizzleMealSelectionRepository()
-const questionResponseRepository = new DrizzleQuestionResponseRepository()
-const guestRepository = new DrizzleGuestRepository()
 
 const getClientIp = (request: Request): string => {
   const forwarded = request.headers.get('x-forwarded-for')
@@ -107,30 +105,36 @@ export async function POST(
 
     const validation = submitRsvpSchema.safeParse(body)
     if (!validation.success) {
-      const errors = validation.error.errors.map((e) => e.message).join(', ')
-      return NextResponse.json({ error: errors }, { status: 400 })
+      const errors = validation.error.errors.map((e) => e.message)
+      return NextResponse.json(
+        { error: 'Validation failed', errors },
+        { status: 400 }
+      )
     }
 
     const data = validation.data
 
-    const submitRSVP = new SubmitRSVP(
-      inviteRepository,
-      rsvpRepository,
-      mealSelectionRepository,
-      questionResponseRepository,
-      guestRepository,
-      mealOptionRepository,
-      customQuestionRepository
-    )
-    const result = await submitRSVP.execute({
-      token,
-      isAttending: data.isAttending,
-      adultsAttending: data.adultsAttending,
-      childrenAttending: data.childrenAttending,
-      dietaryRequirements: data.dietaryRequirements,
-      plusOneName: data.plusOneName,
-      mealSelections: data.mealSelections,
-      questionResponses: data.questionResponses,
+    const result = await db.transaction(async (tx) => {
+      const submitRSVP = new SubmitRSVP(
+        inviteRepository,
+        new DrizzleRSVPRepository(tx),
+        new DrizzleMealSelectionRepository(tx),
+        new DrizzleQuestionResponseRepository(tx),
+        new DrizzleGuestRepository(tx),
+        mealOptionRepository,
+        customQuestionRepository
+      )
+
+      return submitRSVP.execute({
+        token,
+        isAttending: data.isAttending,
+        adultsAttending: data.adultsAttending,
+        childrenAttending: data.childrenAttending,
+        dietaryRequirements: data.dietaryRequirements,
+        plusOneName: data.plusOneName,
+        mealSelections: data.mealSelections,
+        questionResponses: data.questionResponses,
+      })
     })
 
     return NextResponse.json(result)

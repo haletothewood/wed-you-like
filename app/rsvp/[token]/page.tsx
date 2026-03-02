@@ -241,13 +241,14 @@ export default function RSVP() {
       if (!response.ok) {
         const data = await response.json()
         const message = data.error || 'Failed to submit RSVP'
-        const parsedErrors = message
-          .split(',')
-          .map((item: string) => item.trim())
-          .filter(Boolean)
+        const validationMessages = Array.isArray(data.errors)
+          ? data.errors
+              .map((item: unknown) => (typeof item === 'string' ? item.trim() : ''))
+              .filter((item: string) => item.length > 0)
+          : []
 
-        if (parsedErrors.length > 1) {
-          setValidationErrors(parsedErrors)
+        if (validationMessages.length > 0) {
+          setValidationErrors(validationMessages)
           setSubmitError('Please review the fields below and try again.')
           return
         }
