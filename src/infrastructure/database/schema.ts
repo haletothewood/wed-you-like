@@ -32,6 +32,7 @@ export const invites = sqliteTable('invites', {
     .notNull()
     .default(false),
   sentAt: integer('sent_at', { mode: 'timestamp' }),
+  thankYouSentAt: integer('thank_you_sent_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

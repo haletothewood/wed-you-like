@@ -1,0 +1,1 @@
+ALTER TABLE `invites` ADD `thank_you_sent_at` integer;

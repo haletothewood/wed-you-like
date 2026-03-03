@@ -38,6 +38,7 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState<string | null>(null)
   const [sendingPhotoCampaign, setSendingPhotoCampaign] = useState(false)
   const [sendingReminderCampaign, setSendingReminderCampaign] = useState(false)
+  const [sendingThankYouCampaign, setSendingThankYouCampaign] = useState(false)
 
   useEffect(() => {
     fetchReports()
@@ -140,6 +141,33 @@ export default function ReportsPage() {
       alert(error instanceof Error ? error.message : 'Failed to send RSVP reminder campaign')
     } finally {
       setSendingReminderCampaign(false)
+    }
+  }
+
+  const handleSendThankYouCampaign = async () => {
+    if (!confirm('Send thank-you emails to attending invites that have not already received one?')) {
+      return
+    }
+
+    setSendingThankYouCampaign(true)
+    try {
+      const response = await fetch('/api/admin/campaigns/thank-you', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send thank-you campaign')
+      }
+
+      alert(
+        `Thank-you campaign complete.\n\nEligible attending: ${data.eligibleAttending}\nSent: ${data.sent}\nSkipped (not sent invite): ${data.skippedNotSent}\nSkipped (not attending): ${data.skippedNotAttending}\nSkipped (already thanked): ${data.skippedAlreadyThanked}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
+      )
+    } catch (error) {
+      console.error('Error sending thank-you campaign:', error)
+      alert(error instanceof Error ? error.message : 'Failed to send thank-you campaign')
+    } finally {
+      setSendingThankYouCampaign(false)
     }
   }
 
@@ -413,6 +441,25 @@ export default function ReportsPage() {
             className="w-full sm:w-auto"
           >
             {sendingReminderCampaign ? 'Sending...' : 'Send RSVP Reminders'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Thank-You Campaign</CardTitle>
+          <CardDescription>
+            Send thank-you emails to attending invites, skipping invites already thanked.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleSendThankYouCampaign}
+            disabled={sendingThankYouCampaign}
+            variant="secondary"
+            className="w-full sm:w-auto"
+          >
+            {sendingThankYouCampaign ? 'Sending...' : 'Send Thank-You Emails'}
           </Button>
         </CardContent>
       </Card>

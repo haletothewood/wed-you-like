@@ -30,6 +30,7 @@ This project is optimized for a real wedding timeline: reliable enough, protecte
 - [x] Reporting dashboard + CSV exports
 - [x] Email template editor with guided + raw HTML modes
 - [x] Email template live preview and test-send
+- [x] Thank-you email campaign for attending invites
 - [x] Signed admin hero image uploads
 - [x] Dedicated guest photo upload page (`/photos/[token]`)
 - [x] Signed guest photo uploads (invite-token authorized)
@@ -69,14 +70,14 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 
 ### Phase 2: Venue and Seating Workflow (Next)
 
-- [ ] `TODO` Table assignments: table CRUD
-- [ ] `TODO` Table assignments: assign guests to tables
-- [ ] `TODO` Table assignments: capacity checks
-- [ ] `TODO` Include table assignment summary in exports/UI
+- [x] `DONE` Table assignments: table CRUD
+- [x] `DONE` Table assignments: assign guests to tables
+- [x] `DONE` Table assignments: capacity checks
+- [x] `DONE` Include table assignment summary in exports/UI
 
 ### Phase 3: Nice-to-Haves (If Time)
 
-- [ ] `TODO` Thank-you email flow
+- [x] `DONE` Thank-you email flow
 - [ ] `TODO` Better reporting filters/date ranges
 - [ ] `TODO` Small admin QoL improvements (bulk send, bulk reminder)
 
