@@ -63,6 +63,65 @@ interface Invite {
   }
 }
 
+type BulkEmailMode = 'invite' | 'reminder'
+type BulkEmailSkipReason =
+  | 'invite_not_found'
+  | 'no_email'
+  | 'already_sent'
+  | 'not_sent'
+  | 'already_responded'
+
+interface BulkEmailPreviewResult {
+  inviteId: string
+  mode: BulkEmailMode
+  status: 'would_send' | 'skipped'
+  reason?: BulkEmailSkipReason
+  label: string
+  email?: string
+}
+
+interface BulkEmailPreviewResponse {
+  success: boolean
+  mode: BulkEmailMode
+  dryRun: true
+  requested: number
+  eligible: number
+  skipped: number
+  eligibleInviteIds: string[]
+  results: BulkEmailPreviewResult[]
+}
+
+interface BulkEmailRunResult {
+  inviteId: string
+  mode: BulkEmailMode
+  status: 'sent' | 'failed' | 'skipped'
+  reason?: string
+  label: string
+  email?: string
+  attempts?: number
+}
+
+interface BulkEmailRunSummary {
+  mode: BulkEmailMode
+  requested: number
+  eligible: number
+  sent: number
+  skipped: number
+  failed: number
+  retries: number
+  results: BulkEmailRunResult[]
+}
+
+const BULK_SKIP_REASON_LABELS: Record<BulkEmailSkipReason, string> = {
+  invite_not_found: 'Invite not found',
+  no_email: 'No email address',
+  already_sent: 'Invite already sent',
+  not_sent: 'Invite not sent yet',
+  already_responded: 'Invite already responded',
+}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
 export default function InvitesAdmin() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,10 +168,28 @@ export default function InvitesAdmin() {
     failed: number
     failures: Array<{ lineNumber: number; message: string }>
   } | null>(null)
+  const [selectedInviteIds, setSelectedInviteIds] = useState<Set<string>>(new Set())
+  const [bulkEmailMode, setBulkEmailMode] = useState<BulkEmailMode>('invite')
+  const [bulkPreview, setBulkPreview] = useState<BulkEmailPreviewResponse | null>(null)
+  const [bulkPreviewing, setBulkPreviewing] = useState(false)
+  const [bulkSending, setBulkSending] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
+  const [bulkRunSummary, setBulkRunSummary] = useState<BulkEmailRunSummary | null>(null)
 
   useEffect(() => {
     fetchInvites()
   }, [])
+
+  useEffect(() => {
+    setSelectedInviteIds((previous) => {
+      const existingIds = new Set(invites.map((invite) => invite.id))
+      const next = new Set(Array.from(previous).filter((id) => existingIds.has(id)))
+      if (next.size === previous.size) {
+        return previous
+      }
+      return next
+    })
+  }, [invites])
 
   const fetchInvites = async () => {
     try {
@@ -306,6 +383,56 @@ export default function InvitesAdmin() {
     }
   }
 
+  const requestBulkPreview = async (
+    inviteIds: string[],
+    mode: BulkEmailMode
+  ): Promise<BulkEmailPreviewResponse> => {
+    const response = await fetch('/api/admin/invites/bulk-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inviteIds,
+        mode,
+      }),
+    })
+
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to preview bulk email send')
+    }
+
+    return data as BulkEmailPreviewResponse
+  }
+
+  const sendSingleBulkEmail = async (
+    inviteId: string,
+    mode: BulkEmailMode
+  ): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const endpoint =
+      mode === 'invite'
+        ? `/api/admin/invites/${inviteId}/send-email`
+        : `/api/admin/invites/${inviteId}/send-reminder`
+
+    try {
+      const response = await fetch(endpoint, { method: 'POST' })
+      const data = await response.json()
+
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: data.error || 'Request failed',
+        }
+      }
+
+      return { ok: true }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Request failed',
+      }
+    }
+  }
+
   const updateGroupGuest = (
     index: number,
     field: 'name' | 'email' | 'parentGuestId',
@@ -471,6 +598,184 @@ export default function InvitesAdmin() {
     completenessFilter,
     sortBy,
   ])
+
+  const filteredInviteIds = useMemo(
+    () => filteredInvites.map((invite) => invite.id),
+    [filteredInvites]
+  )
+
+  const selectedFilteredCount = useMemo(
+    () => filteredInviteIds.filter((inviteId) => selectedInviteIds.has(inviteId)).length,
+    [filteredInviteIds, selectedInviteIds]
+  )
+
+  const allFilteredSelected =
+    filteredInviteIds.length > 0 && selectedFilteredCount === filteredInviteIds.length
+  const someFilteredSelected = selectedFilteredCount > 0 && !allFilteredSelected
+  const bulkTargetInviteIds = selectedInviteIds.size > 0
+    ? Array.from(selectedInviteIds)
+    : filteredInviteIds
+
+  const toggleInviteSelection = (inviteId: string, checked: boolean) => {
+    setSelectedInviteIds((previous) => {
+      const next = new Set(previous)
+      if (checked) {
+        next.add(inviteId)
+      } else {
+        next.delete(inviteId)
+      }
+      return next
+    })
+  }
+
+  const toggleFilteredSelection = (checked: boolean) => {
+    setSelectedInviteIds((previous) => {
+      const next = new Set(previous)
+      for (const inviteId of filteredInviteIds) {
+        if (checked) {
+          next.add(inviteId)
+        } else {
+          next.delete(inviteId)
+        }
+      }
+      return next
+    })
+  }
+
+  const handlePreviewBulkEmail = async () => {
+    if (bulkTargetInviteIds.length === 0) {
+      alert('No invites available for bulk action')
+      return
+    }
+
+    setBulkPreviewing(true)
+    setBulkRunSummary(null)
+    try {
+      const preview = await requestBulkPreview(bulkTargetInviteIds, bulkEmailMode)
+      setBulkPreview(preview)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to preview bulk email send')
+    } finally {
+      setBulkPreviewing(false)
+    }
+  }
+
+  const handleRunBulkEmail = async () => {
+    if (bulkTargetInviteIds.length === 0) {
+      alert('No invites available for bulk action')
+      return
+    }
+
+    const modeLabel = bulkEmailMode === 'invite' ? 'invite emails' : 'reminder emails'
+    if (!confirm(`Send ${modeLabel} for ${bulkTargetInviteIds.length} invite(s)?`)) {
+      return
+    }
+
+    setBulkSending(true)
+    setBulkRunSummary(null)
+    setBulkPreviewing(false)
+
+    try {
+      const preview = await requestBulkPreview(bulkTargetInviteIds, bulkEmailMode)
+      setBulkPreview(preview)
+
+      const resultsByInviteId = new Map<string, BulkEmailRunResult>(
+        preview.results.map((result) => [
+          result.inviteId,
+          {
+            inviteId: result.inviteId,
+            mode: result.mode,
+            status: result.status === 'skipped' ? 'skipped' : 'failed',
+            reason:
+              result.status === 'skipped'
+                ? result.reason
+                  ? BULK_SKIP_REASON_LABELS[result.reason]
+                  : 'Skipped'
+                : 'Not processed',
+            label: result.label,
+            email: result.email,
+          },
+        ])
+      )
+
+      let sent = 0
+      let failed = 0
+      let retries = 0
+
+      const eligibleInviteIds = preview.eligibleInviteIds
+      setBulkProgress({ current: 0, total: eligibleInviteIds.length })
+
+      for (let index = 0; index < eligibleInviteIds.length; index++) {
+        const inviteId = eligibleInviteIds[index]
+        let attempts = 0
+        let lastError = 'Failed to send email'
+        let sentSuccessfully = false
+
+        while (attempts < 2 && !sentSuccessfully) {
+          attempts++
+          const outcome = await sendSingleBulkEmail(inviteId, bulkEmailMode)
+          if (outcome.ok) {
+            sentSuccessfully = true
+          } else {
+            lastError = outcome.error
+            if (attempts < 2) {
+              retries++
+              await wait(500)
+            }
+          }
+        }
+
+        const existing = resultsByInviteId.get(inviteId)
+        if (!existing) continue
+
+        if (sentSuccessfully) {
+          sent++
+          resultsByInviteId.set(inviteId, {
+            ...existing,
+            status: 'sent',
+            reason: undefined,
+            attempts,
+          })
+        } else {
+          failed++
+          resultsByInviteId.set(inviteId, {
+            ...existing,
+            status: 'failed',
+            reason: lastError,
+            attempts,
+          })
+        }
+
+        setBulkProgress({ current: index + 1, total: eligibleInviteIds.length })
+        await wait(250)
+      }
+
+      const results = preview.results
+        .map((result) => resultsByInviteId.get(result.inviteId))
+        .filter((result): result is BulkEmailRunResult => Boolean(result))
+
+      const summary: BulkEmailRunSummary = {
+        mode: bulkEmailMode,
+        requested: preview.requested,
+        eligible: preview.eligible,
+        sent,
+        skipped: preview.skipped,
+        failed,
+        retries,
+        results,
+      }
+
+      setBulkRunSummary(summary)
+      if (sent > 0) {
+        await fetchInvites()
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to run bulk email send')
+    } finally {
+      setBulkSending(false)
+      setBulkProgress(null)
+    }
+  }
 
   if (loading) {
     return <LoadingSpinner text="Loading invites..." />
@@ -961,10 +1266,148 @@ export default function InvitesAdmin() {
               </Button>
             </div>
 
+            <div className="mb-4 rounded-lg border p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">Bulk Email Actions</p>
+                  <p className="text-xs text-muted-foreground">
+                    Use selected invites, or all filtered invites when none are selected.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">
+                    Selected: {selectedInviteIds.size}
+                  </Badge>
+                  <Badge variant="secondary">
+                    Target: {bulkTargetInviteIds.length}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-2">
+                <div>
+                  <Label htmlFor="bulk-mode" className="text-xs">Mode</Label>
+                  <select
+                    id="bulk-mode"
+                    className="h-9 rounded-md border bg-background px-3 text-sm"
+                    value={bulkEmailMode}
+                    onChange={(e) => {
+                      setBulkEmailMode(e.target.value as BulkEmailMode)
+                      setBulkRunSummary(null)
+                    }}
+                    disabled={bulkSending || bulkPreviewing}
+                  >
+                    <option value="invite">Send Invites</option>
+                    <option value="reminder">Send Reminders</option>
+                  </select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => toggleFilteredSelection(true)}
+                  disabled={filteredInviteIds.length === 0 || bulkSending || bulkPreviewing}
+                >
+                  Select All Filtered
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedInviteIds(new Set())}
+                  disabled={selectedInviteIds.size === 0 || bulkSending || bulkPreviewing}
+                >
+                  Clear Selection
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePreviewBulkEmail}
+                  disabled={bulkTargetInviteIds.length === 0 || bulkSending || bulkPreviewing}
+                >
+                  {bulkPreviewing ? 'Previewing...' : 'Dry Run Preview'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleRunBulkEmail}
+                  disabled={bulkTargetInviteIds.length === 0 || bulkSending || bulkPreviewing}
+                >
+                  {bulkSending
+                    ? 'Sending...'
+                    : bulkEmailMode === 'invite'
+                      ? 'Send Bulk Invites'
+                      : 'Send Bulk Reminders'}
+                </Button>
+              </div>
+
+              {bulkProgress && (
+                <p className="text-xs text-muted-foreground">
+                  Processing {bulkProgress.current} of {bulkProgress.total} eligible invite
+                  {bulkProgress.total === 1 ? '' : 's'}...
+                </p>
+              )}
+
+              {bulkPreview && (
+                <Alert>
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        Preview: {bulkPreview.eligible} eligible, {bulkPreview.skipped} skipped
+                      </p>
+                      <ul className="list-disc pl-5 text-sm">
+                        {bulkPreview.results.slice(0, 8).map((result) => (
+                          <li key={`preview-${result.inviteId}`}>
+                            {result.label}: {result.status === 'would_send'
+                              ? `Will send to ${result.email || 'unknown email'}`
+                              : BULK_SKIP_REASON_LABELS[result.reason || 'invite_not_found']}
+                          </li>
+                        ))}
+                      </ul>
+                      {bulkPreview.results.length > 8 && (
+                        <p className="text-xs text-muted-foreground">
+                          +{bulkPreview.results.length - 8} more rows in preview
+                        </p>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {bulkRunSummary && (
+                <Alert variant={bulkRunSummary.failed > 0 ? 'destructive' : 'default'}>
+                  <AlertDescription>
+                    <p className="font-medium">
+                      Bulk send complete: Sent {bulkRunSummary.sent}, skipped {bulkRunSummary.skipped}, failed {bulkRunSummary.failed}
+                    </p>
+                    <p className="text-sm">
+                      Eligible: {bulkRunSummary.eligible} | Retries used: {bulkRunSummary.retries}
+                    </p>
+                    {bulkRunSummary.results.some((result) => result.status === 'failed') && (
+                      <ul className="list-disc pl-5 mt-2 text-sm">
+                        {bulkRunSummary.results
+                          .filter((result) => result.status === 'failed')
+                          .slice(0, 8)
+                          .map((result) => (
+                            <li key={`failed-${result.inviteId}`}>
+                              {result.label}: {result.reason || 'Failed'}
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
             <div className="overflow-x-auto">
               <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[44px]">
+                    <Checkbox
+                      checked={allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false}
+                      onCheckedChange={(checked) => toggleFilteredSelection(checked === true)}
+                      aria-label="Select all filtered invites"
+                    />
+                  </TableHead>
                   <TableHead>Name/Group</TableHead>
                   <TableHead>Guests</TableHead>
                   <TableHead>Count</TableHead>
@@ -979,6 +1422,13 @@ export default function InvitesAdmin() {
               <TableBody>
                 {filteredInvites.map((invite) => (
                   <TableRow key={invite.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedInviteIds.has(invite.id)}
+                        onCheckedChange={(checked) => toggleInviteSelection(invite.id, checked === true)}
+                        aria-label={`Select invite ${invite.groupName || invite.guests[0]?.name || invite.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {invite.groupName || invite.guests[0]?.name || 'Unknown'}
                       {invite.plusOneAllowed && (

@@ -15,6 +15,7 @@ This project is optimized for a real wedding timeline: reliable enough, protecte
 
 - [x] Admin login/logout with session cookie
 - [x] Invite management (individual + group)
+- [x] Bulk send and bulk reminder actions from Invite management
 - [x] Tokenized public RSVP links
 - [x] RSVP submission/update
 - [x] Attendance (yes/no)
@@ -79,7 +80,7 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 
 - [x] `DONE` Thank-you email flow
 - [ ] `TODO` Better reporting filters/date ranges
-- [ ] `TODO` Small admin QoL improvements (bulk send, bulk reminder)
+- [x] `DONE` Small admin QoL improvements (bulk send, bulk reminder)
 
 ### Phase 4: Pre-Launch Guardrails (Before Sharing Publicly)
 
