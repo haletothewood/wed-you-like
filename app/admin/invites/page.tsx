@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import Link from 'next/link'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
@@ -128,6 +129,11 @@ export default function InvitesAdmin() {
   const [showForm, setShowForm] = useState(false)
   const [inviteType, setInviteType] = useState<'individual' | 'group' | 'bulk'>('individual')
   const [sending, setSending] = useState<string | null>(null)
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{
+    variant: 'default' | 'destructive'
+    message: string
+  } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sentFilter, setSentFilter] = useState<'all' | 'sent' | 'not_sent'>('all')
   const [responseFilter, setResponseFilter] = useState<'all' | 'responded' | 'no_response'>('all')
@@ -175,6 +181,7 @@ export default function InvitesAdmin() {
   const [bulkSending, setBulkSending] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
   const [bulkRunSummary, setBulkRunSummary] = useState<BulkEmailRunSummary | null>(null)
+  const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     fetchInvites()
@@ -190,6 +197,33 @@ export default function InvitesAdmin() {
       return next
     })
   }, [invites])
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) {
+        clearTimeout(noticeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const showNotice = (
+    message: string,
+    variant: 'default' | 'destructive' = 'destructive',
+    autoDismissMs?: number
+  ) => {
+    if (noticeTimeoutRef.current) {
+      clearTimeout(noticeTimeoutRef.current)
+      noticeTimeoutRef.current = null
+    }
+
+    setNotice({ variant, message })
+
+    if (!autoDismissMs) return
+    noticeTimeoutRef.current = setTimeout(() => {
+      setNotice(null)
+      noticeTimeoutRef.current = null
+    }, autoDismissMs)
+  }
 
   const fetchInvites = async () => {
     try {
@@ -338,7 +372,7 @@ export default function InvitesAdmin() {
       setBulkInput(text)
     } catch (error) {
       console.error('Failed to read bulk invite file:', error)
-      alert('Failed to read file. Please upload a valid CSV or text file.')
+      showNotice('Failed to read file. Please upload a valid CSV or text file.')
     } finally {
       setBulkLoadingFile(false)
     }
@@ -370,16 +404,32 @@ export default function InvitesAdmin() {
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Email sent successfully to ${data.sentTo}`)
+        showNotice(`Email sent successfully to ${data.sentTo}`, 'default', 3000)
         fetchInvites()
       } else {
-        alert(`Error: ${data.error}`)
+        showNotice(`Error: ${data.error}`)
       }
     } catch (error) {
       console.error('Error sending email:', error)
-      alert('Failed to send email')
+      showNotice('Failed to send email')
     } finally {
       setSending(null)
+    }
+  }
+
+  const handleCopyRsvpLink = async (inviteId: string, token: string) => {
+    const rsvpPath = `/rsvp/${token}`
+    const rsvpUrl = new URL(rsvpPath, window.location.origin).toString()
+
+    try {
+      await navigator.clipboard.writeText(rsvpUrl)
+      setCopiedInviteId(inviteId)
+      showNotice('RSVP link copied to clipboard.', 'default', 2200)
+      setTimeout(() => {
+        setCopiedInviteId((current) => (current === inviteId ? null : current))
+      }, 1800)
+    } catch {
+      showNotice('Unable to copy RSVP link. Please copy it manually.', 'destructive', 3000)
     }
   }
 
@@ -644,7 +694,7 @@ export default function InvitesAdmin() {
 
   const handlePreviewBulkEmail = async () => {
     if (bulkTargetInviteIds.length === 0) {
-      alert('No invites available for bulk action')
+      showNotice('No invites available for bulk action')
       return
     }
 
@@ -654,7 +704,7 @@ export default function InvitesAdmin() {
       const preview = await requestBulkPreview(bulkTargetInviteIds, bulkEmailMode)
       setBulkPreview(preview)
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to preview bulk email send')
+      showNotice(error instanceof Error ? error.message : 'Failed to preview bulk email send')
     } finally {
       setBulkPreviewing(false)
     }
@@ -662,7 +712,7 @@ export default function InvitesAdmin() {
 
   const handleRunBulkEmail = async () => {
     if (bulkTargetInviteIds.length === 0) {
-      alert('No invites available for bulk action')
+      showNotice('No invites available for bulk action')
       return
     }
 
@@ -770,7 +820,7 @@ export default function InvitesAdmin() {
         await fetchInvites()
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to run bulk email send')
+      showNotice(error instanceof Error ? error.message : 'Failed to run bulk email send')
     } finally {
       setBulkSending(false)
       setBulkProgress(null)
@@ -1150,6 +1200,11 @@ export default function InvitesAdmin() {
             <CardDescription>Search, filter, and sort invitations for faster admin work.</CardDescription>
           </CardHeader>
           <CardContent>
+            {notice && (
+              <Alert variant={notice.variant} className="mb-4">
+                <AlertDescription>{notice.message}</AlertDescription>
+              </Alert>
+            )}
             <div className="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
               <div className="xl:col-span-2">
                 <Label htmlFor="invite-search" className="text-xs">Search</Label>
@@ -1523,9 +1578,25 @@ export default function InvitesAdmin() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        /rsvp/{invite.token}
-                      </code>
+                      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                        <Link
+                          href={`/rsvp/${invite.token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs bg-muted px-2 py-1 rounded underline-offset-4 hover:underline"
+                        >
+                          /rsvp/{invite.token}
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          type="button"
+                          onClick={() => handleCopyRsvpLink(invite.id, invite.token)}
+                          aria-label={`Copy RSVP link for ${invite.groupName || invite.guests[0]?.name || 'invite'}`}
+                        >
+                          {copiedInviteId === invite.id ? 'Copied' : 'Copy'}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end">

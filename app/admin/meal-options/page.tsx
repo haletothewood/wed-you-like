@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ export default function MealOptionsPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   const fetchMealOptions = useCallback(async () => {
     try {
@@ -47,7 +49,7 @@ export default function MealOptionsPage() {
       const data = await response.json()
       setMealOptions(data.mealOptions || [])
     } catch {
-      alert('Failed to load meal options')
+      setNotice({ variant: 'destructive', message: 'Failed to load meal options' })
     } finally {
       setLoading(false)
     }
@@ -79,9 +81,13 @@ export default function MealOptionsPage() {
 
       setName('')
       setDescription('')
+      setNotice({ variant: 'default', message: 'Meal option added.' })
       await fetchMealOptions()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create meal option')
+      setNotice({
+        variant: 'destructive',
+        message: err instanceof Error ? err.message : 'Failed to create meal option',
+      })
     } finally {
       setSubmitting(false)
     }
@@ -101,8 +107,12 @@ export default function MealOptionsPage() {
       }
 
       await fetchMealOptions()
+      setNotice({ variant: 'default', message: 'Meal option deleted.' })
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete meal option')
+      setNotice({
+        variant: 'destructive',
+        message: err instanceof Error ? err.message : 'Failed to delete meal option',
+      })
     }
   }
 
@@ -120,8 +130,12 @@ export default function MealOptionsPage() {
       }
 
       await fetchMealOptions()
+      setNotice({ variant: 'default', message: 'Meal option updated.' })
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update meal option')
+      setNotice({
+        variant: 'destructive',
+        message: err instanceof Error ? err.message : 'Failed to update meal option',
+      })
     }
   }
 
@@ -141,6 +155,11 @@ export default function MealOptionsPage() {
         title="Meal Options Management"
         description="Configure menu options for starters, mains, and desserts"
       />
+      {notice && (
+        <Alert variant={notice.variant} className="mb-6">
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

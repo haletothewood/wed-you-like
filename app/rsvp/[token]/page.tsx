@@ -79,6 +79,7 @@ export default function RSVP() {
   const [missingMealSelectionKeys, setMissingMealSelectionKeys] = useState<string[]>([])
 
   const jsConfetti = useRef<JSConfetti | null>(null)
+  const successHeadingRef = useRef<HTMLHeadingElement | null>(null)
 
   // Form state
   const [isAttending, setIsAttending] = useState<boolean | null>(null)
@@ -128,6 +129,11 @@ export default function RSVP() {
   useEffect(() => {
     jsConfetti.current = new JSConfetti()
   }, [])
+
+  useEffect(() => {
+    if (!submitted) return
+    successHeadingRef.current?.focus()
+  }, [submitted])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -400,9 +406,15 @@ export default function RSVP() {
   if (submitted) {
     return (
       <div className="hero-wash min-h-screen flex items-center justify-center p-4">
-        <Card className="surface-panel w-full max-w-lg text-center">
+        <Card className="surface-panel w-full max-w-lg text-center" role="status" aria-live="polite">
           <CardHeader>
-            <CardTitle className="text-2xl sm:text-3xl">Thanks, you&apos;re all set</CardTitle>
+            <CardTitle
+              ref={successHeadingRef}
+              tabIndex={-1}
+              className="text-2xl sm:text-3xl"
+            >
+              Thanks, you&apos;re all set
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-lg">
