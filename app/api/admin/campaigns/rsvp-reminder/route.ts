@@ -86,12 +86,12 @@ export async function POST(request: Request) {
               <p>Just a quick reminder to complete your RSVP using your personal link:</p>
               ${deadlineLine}
               <p style="margin: 22px 0;">
-                <a href="${escapedRsvpUrl}" style="background: #2d6cdf; color: #fff; text-decoration: none; padding: 12px 22px; border-radius: 8px; display: inline-block; font-weight: 600;">
+                <a href="${escapedRsvpUrl}" style="background: #5b623f; color: #ecebe1; text-decoration: none; padding: 12px 22px; border-radius: 8px; display: inline-block; font-weight: 600;">
                   Complete RSVP
                 </a>
               </p>
               <p>If the button doesn't work, use this link:</p>
-              <p><a href="${escapedRsvpUrl}">${escapedRsvpUrl}</a></p>
+              <p><a href="${escapedRsvpUrl}" style="color: #5b623f;">${escapedRsvpUrl}</a></p>
               <p style="margin-top: 24px;">Thank you,<br/>${escapedCoupleNames}</p>
             </div>
           `
