@@ -7,6 +7,7 @@ export interface GuestTypeInput {
 
 export interface TableRecord {
   id: string
+  name: string
   tableNumber: number
   capacity: number
 }
@@ -17,6 +18,7 @@ export interface TableAssignmentRecord {
 
 export interface TableSeatingSummary {
   id: string
+  name: string
   tableNumber: number
   capacity: number
   assignedSeats: number
@@ -55,6 +57,7 @@ export const buildTableSeatingSummary = (
       const assignedSeats = assignedSeatCounts.get(table.id) ?? 0
       return {
         id: table.id,
+        name: table.name,
         tableNumber: table.tableNumber,
         capacity: table.capacity,
         assignedSeats,

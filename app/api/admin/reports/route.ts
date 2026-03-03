@@ -20,6 +20,7 @@ export async function GET() {
       db
         .select({
           id: tables.id,
+          name: tables.name,
           tableNumber: tables.tableNumber,
           capacity: tables.capacity,
         })

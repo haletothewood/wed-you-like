@@ -24,6 +24,7 @@ interface ReportData {
   }
   seatingSummary: Array<{
     id: string
+    name: string
     tableNumber: number
     capacity: number
     assignedSeats: number
@@ -371,8 +372,9 @@ export default function ReportsPage() {
               {data.seatingSummary.map((table) => (
                 <div key={table.id} className="flex items-center justify-between rounded-lg bg-muted p-3">
                   <div>
-                    <div className="font-medium">Table {table.tableNumber}</div>
+                    <div className="font-medium">{table.name || `Table ${table.tableNumber}`}</div>
                     <div className="text-sm text-muted-foreground">
+                      Table {table.tableNumber} •{' '}
                       {table.assignedSeats}/{table.capacity} seats assigned
                     </div>
                   </div>

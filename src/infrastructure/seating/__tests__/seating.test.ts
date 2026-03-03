@@ -23,8 +23,8 @@ describe('buildTableSeatingSummary', () => {
   it('counts every assignment as a seat, including plus-ones', () => {
     const summary = buildTableSeatingSummary(
       [
-        { id: 'table-1', tableNumber: 1, capacity: 3 },
-        { id: 'table-2', tableNumber: 2, capacity: 6 },
+        { id: 'table-1', name: 'Top Table', tableNumber: 1, capacity: 3 },
+        { id: 'table-2', name: 'Garden View', tableNumber: 2, capacity: 6 },
       ],
       [
         { tableId: 'table-1' }, // adult
@@ -36,6 +36,7 @@ describe('buildTableSeatingSummary', () => {
 
     expect(summary[0]).toEqual({
       id: 'table-1',
+      name: 'Top Table',
       tableNumber: 1,
       capacity: 3,
       assignedSeats: 3,
@@ -44,6 +45,7 @@ describe('buildTableSeatingSummary', () => {
     })
     expect(summary[1].assignedSeats).toBe(1)
     expect(summary[1].availableSeats).toBe(5)
+    expect(summary[1].name).toBe('Garden View')
   })
 })
 

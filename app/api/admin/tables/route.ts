@@ -12,11 +12,23 @@ const parsePositiveInt = (value: unknown): number | null => {
   return value
 }
 
+const parseTableName = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  return trimmed
+}
+
 export async function GET() {
   try {
     const allTables = await db
       .select({
         id: tables.id,
+        name: tables.name,
         tableNumber: tables.tableNumber,
         capacity: tables.capacity,
       })
@@ -41,12 +53,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    const name = parseTableName(body.name)
     const tableNumber = parsePositiveInt(body.tableNumber)
     const capacity = parsePositiveInt(body.capacity)
 
-    if (tableNumber === null || capacity === null) {
+    if (name === null || tableNumber === null || capacity === null) {
       return NextResponse.json(
-        { error: 'tableNumber and capacity must be positive integers' },
+        { error: 'name is required, and tableNumber/capacity must be positive integers' },
         { status: 400 }
       )
     }
@@ -69,6 +82,7 @@ export async function POST(request: Request) {
 
     await db.insert(tables).values({
       id: tableId,
+      name,
       tableNumber,
       capacity,
       createdAt: now,
@@ -79,6 +93,7 @@ export async function POST(request: Request) {
       {
         table: {
           id: tableId,
+          name,
           tableNumber,
           capacity,
           assignedSeats: 0,

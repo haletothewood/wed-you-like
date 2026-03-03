@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 interface SeatingTable {
   id: string
+  name: string
   tableNumber: number
   capacity: number
   assignedSeats: number
@@ -26,6 +27,7 @@ interface SeatingGuest {
   inviteGroupName: string | null
   guestType: 'Adult' | 'Child' | 'Plus One'
   tableId: string | null
+  tableName: string | null
 }
 
 interface SeatingResponse {
@@ -37,6 +39,7 @@ export default function TablesAdminPage() {
   const [loading, setLoading] = useState(true)
   const [tables, setTables] = useState<SeatingTable[]>([])
   const [guests, setGuests] = useState<SeatingGuest[]>([])
+  const [tableName, setTableName] = useState('')
   const [tableNumber, setTableNumber] = useState('')
   const [capacity, setCapacity] = useState('')
   const [creatingTable, setCreatingTable] = useState(false)
@@ -71,6 +74,7 @@ export default function TablesAdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: tableName,
           tableNumber: Number(tableNumber),
           capacity: Number(capacity),
         }),
@@ -81,6 +85,7 @@ export default function TablesAdminPage() {
         throw new Error(data.error || 'Failed to create table')
       }
 
+      setTableName('')
       setTableNumber('')
       setCapacity('')
       await fetchSeatingData()
@@ -91,8 +96,8 @@ export default function TablesAdminPage() {
     }
   }
 
-  const handleDeleteTable = async (tableId: string, tableNo: number) => {
-    if (!confirm(`Delete Table ${tableNo}? This will remove its assignments.`)) {
+  const handleDeleteTable = async (tableId: string, tableNameValue: string, tableNo: number) => {
+    if (!confirm(`Delete ${tableNameValue} (Table ${tableNo})? This will remove its assignments.`)) {
       return
     }
 
@@ -146,10 +151,20 @@ export default function TablesAdminPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Create Table</CardTitle>
-          <CardDescription>Add a table number and seat capacity</CardDescription>
+          <CardDescription>Add a name, table number, and seat capacity</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid grid-cols-1 gap-4 sm:grid-cols-3" onSubmit={handleCreateTable}>
+          <form className="grid grid-cols-1 gap-4 sm:grid-cols-4" onSubmit={handleCreateTable}>
+            <div className="space-y-1">
+              <Label htmlFor="table-name">Table Name</Label>
+              <Input
+                id="table-name"
+                value={tableName}
+                onChange={(event) => setTableName(event.target.value)}
+                placeholder="e.g. Top Table"
+                required
+              />
+            </div>
             <div className="space-y-1">
               <Label htmlFor="table-number">Table Number</Label>
               <Input
@@ -196,8 +211,9 @@ export default function TablesAdminPage() {
               {tables.map((table) => (
                 <div key={table.id} className="flex items-center justify-between rounded-lg border p-3">
                   <div>
-                    <div className="font-medium">Table {table.tableNumber}</div>
+                    <div className="font-medium">{table.name || `Table ${table.tableNumber}`}</div>
                     <div className="text-sm text-muted-foreground">
+                      Table {table.tableNumber} •{' '}
                       {table.assignedSeats}/{table.capacity} seats assigned
                     </div>
                   </div>
@@ -208,7 +224,7 @@ export default function TablesAdminPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDeleteTable(table.id, table.tableNumber)}
+                      onClick={() => handleDeleteTable(table.id, table.name || `Table ${table.tableNumber}`, table.tableNumber)}
                       disabled={deletingTableId === table.id}
                     >
                       {deletingTableId === table.id ? 'Deleting...' : 'Delete'}
@@ -264,7 +280,7 @@ export default function TablesAdminPage() {
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {tables.map((table) => (
                             <SelectItem key={table.id} value={table.id}>
-                              Table {table.tableNumber} ({table.assignedSeats}/{table.capacity})
+                              {(table.name || `Table ${table.tableNumber}`)} (Table {table.tableNumber}, {table.assignedSeats}/{table.capacity})
                             </SelectItem>
                           ))}
                         </SelectContent>

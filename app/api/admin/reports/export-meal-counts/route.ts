@@ -21,6 +21,7 @@ export async function GET() {
         courseType: mealSelections.courseType,
         mealOptionName: mealOptions.name,
         mealOptionDescription: mealOptions.description,
+        tableName: tables.name,
         tableNumber: tables.tableNumber,
       })
       .from(mealSelections)
@@ -73,7 +74,11 @@ export async function GET() {
     rows.push(toCsvRow(['Desserts', totals.DESSERT]))
 
     const tableMealCounts = allMealSelections.reduce((acc, selection) => {
-      const tableLabel = selection.tableNumber ? `Table ${selection.tableNumber}` : 'Unassigned'
+      const tableLabel = selection.tableNumber
+        ? selection.tableName && selection.tableName.trim() !== ''
+          ? `${selection.tableName} (Table ${selection.tableNumber})`
+          : `Table ${selection.tableNumber}`
+        : 'Unassigned'
       const tableSortOrder = selection.tableNumber ?? Number.MAX_SAFE_INTEGER
       const key = `${tableLabel}:${selection.courseType}:${selection.mealOptionName || 'Unknown'}`
 
