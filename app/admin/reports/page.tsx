@@ -7,6 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Download } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface ReportData {
   overview: {
@@ -33,6 +43,8 @@ interface ReportData {
   }>
 }
 
+type CampaignKind = 'photo' | 'reminder' | 'thank-you'
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ReportData | null>(null)
@@ -40,6 +52,12 @@ export default function ReportsPage() {
   const [sendingPhotoCampaign, setSendingPhotoCampaign] = useState(false)
   const [sendingReminderCampaign, setSendingReminderCampaign] = useState(false)
   const [sendingThankYouCampaign, setSendingThankYouCampaign] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error'
+    title: string
+    message: string
+  } | null>(null)
+  const [pendingCampaign, setPendingCampaign] = useState<CampaignKind | null>(null)
 
   useEffect(() => {
     fetchReports()
@@ -58,6 +76,7 @@ export default function ReportsPage() {
   }
 
   const handleExport = async (type: 'guests' | 'meal-counts') => {
+    setFeedback(null)
     setExporting(type)
     try {
       const response = await fetch(`/api/admin/reports/export-${type}`)
@@ -85,17 +104,18 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting:', error)
-      alert('Failed to export data')
+      setFeedback({
+        type: 'error',
+        title: 'Export failed',
+        message: error instanceof Error ? error.message : 'Failed to export data',
+      })
     } finally {
       setExporting(null)
     }
   }
 
   const handleSendPhotoShareCampaign = async () => {
-    if (!confirm('Send the day-of photo share email to all invites with an email address?')) {
-      return
-    }
-
+    setFeedback(null)
     setSendingPhotoCampaign(true)
     try {
       const response = await fetch('/api/admin/campaigns/photo-share', {
@@ -107,22 +127,25 @@ export default function ReportsPage() {
         throw new Error(data.error || 'Failed to send photo share campaign')
       }
 
-      alert(
-        `Photo share campaign complete.\n\nSent: ${data.sent}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
-      )
+      setFeedback({
+        type: 'success',
+        title: 'Photo share campaign sent',
+        message: `Sent ${data.sent}. Skipped (no email) ${data.skippedNoEmail}. Failed ${data.failed}.`,
+      })
     } catch (error) {
       console.error('Error sending photo share campaign:', error)
-      alert(error instanceof Error ? error.message : 'Failed to send photo share campaign')
+      setFeedback({
+        type: 'error',
+        title: 'Photo share campaign failed',
+        message: error instanceof Error ? error.message : 'Failed to send photo share campaign',
+      })
     } finally {
       setSendingPhotoCampaign(false)
     }
   }
 
   const handleSendReminderCampaign = async () => {
-    if (!confirm('Send RSVP reminder emails to pending invites (sent invites with no RSVP yet)?')) {
-      return
-    }
-
+    setFeedback(null)
     setSendingReminderCampaign(true)
     try {
       const response = await fetch('/api/admin/campaigns/rsvp-reminder', {
@@ -134,22 +157,25 @@ export default function ReportsPage() {
         throw new Error(data.error || 'Failed to send RSVP reminder campaign')
       }
 
-      alert(
-        `RSVP reminder campaign complete.\n\nEligible pending: ${data.eligiblePending}\nSent: ${data.sent}\nSkipped (not sent yet): ${data.skippedNotSent}\nSkipped (already responded): ${data.skippedAlreadyResponded}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
-      )
+      setFeedback({
+        type: 'success',
+        title: 'RSVP reminder campaign sent',
+        message: `Sent ${data.sent} of ${data.eligiblePending} pending invites. Failed ${data.failed}.`,
+      })
     } catch (error) {
       console.error('Error sending RSVP reminder campaign:', error)
-      alert(error instanceof Error ? error.message : 'Failed to send RSVP reminder campaign')
+      setFeedback({
+        type: 'error',
+        title: 'RSVP reminder campaign failed',
+        message: error instanceof Error ? error.message : 'Failed to send RSVP reminder campaign',
+      })
     } finally {
       setSendingReminderCampaign(false)
     }
   }
 
   const handleSendThankYouCampaign = async () => {
-    if (!confirm('Send thank-you emails to attending invites that have not already received one?')) {
-      return
-    }
-
+    setFeedback(null)
     setSendingThankYouCampaign(true)
     try {
       const response = await fetch('/api/admin/campaigns/thank-you', {
@@ -161,15 +187,53 @@ export default function ReportsPage() {
         throw new Error(data.error || 'Failed to send thank-you campaign')
       }
 
-      alert(
-        `Thank-you campaign complete.\n\nEligible attending: ${data.eligibleAttending}\nSent: ${data.sent}\nSkipped (not sent invite): ${data.skippedNotSent}\nSkipped (not attending): ${data.skippedNotAttending}\nSkipped (already thanked): ${data.skippedAlreadyThanked}\nSkipped (no email): ${data.skippedNoEmail}\nFailed: ${data.failed}`
-      )
+      setFeedback({
+        type: 'success',
+        title: 'Thank-you campaign sent',
+        message: `Sent ${data.sent} of ${data.eligibleAttending} eligible invites. Failed ${data.failed}.`,
+      })
     } catch (error) {
       console.error('Error sending thank-you campaign:', error)
-      alert(error instanceof Error ? error.message : 'Failed to send thank-you campaign')
+      setFeedback({
+        type: 'error',
+        title: 'Thank-you campaign failed',
+        message: error instanceof Error ? error.message : 'Failed to send thank-you campaign',
+      })
     } finally {
       setSendingThankYouCampaign(false)
     }
+  }
+
+  const campaignCopy: Record<CampaignKind, { title: string; description: string }> = {
+    reminder: {
+      title: 'Send RSVP reminders?',
+      description: 'This sends reminder emails to pending invites (already sent, not yet responded).',
+    },
+    'thank-you': {
+      title: 'Send thank-you emails?',
+      description: 'This sends thank-you emails to attending invites that have not been thanked yet.',
+    },
+    photo: {
+      title: 'Send photo share emails?',
+      description: 'This sends day-of photo share emails to all invites that have an email address.',
+    },
+  }
+
+  const handleConfirmCampaign = async () => {
+    if (!pendingCampaign) return
+
+    const selected = pendingCampaign
+    setPendingCampaign(null)
+
+    if (selected === 'reminder') {
+      await handleSendReminderCampaign()
+      return
+    }
+    if (selected === 'thank-you') {
+      await handleSendThankYouCampaign()
+      return
+    }
+    await handleSendPhotoShareCampaign()
   }
 
   if (loading) {
@@ -195,10 +259,32 @@ export default function ReportsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      <Dialog open={pendingCampaign !== null} onOpenChange={(open) => !open && setPendingCampaign(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingCampaign ? campaignCopy[pendingCampaign].title : ''}</DialogTitle>
+            <DialogDescription>
+              {pendingCampaign ? campaignCopy[pendingCampaign].description : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingCampaign(null)}>Cancel</Button>
+            <Button onClick={handleConfirmCampaign}>Send campaign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         title="Reports & Statistics"
         description="View wedding RSVP statistics and export data for your venue"
       />
+
+      {feedback && (
+        <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'} className="mb-6">
+          <AlertTitle>{feedback.title}</AlertTitle>
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Overview Stats */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -396,32 +482,34 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <h4 className="font-medium mb-2">Venue Report (Recommended)</h4>
-              <p className="text-sm text-muted-foreground mb-3">
+            <div className="flex h-full flex-col">
+              <h4 className="mb-2 font-medium">Venue Report (Recommended)</h4>
+              <p className="mb-3 text-sm text-muted-foreground">
                 Attending guests with table assignments and meal choices, plus meal count totals
               </p>
               <Button
                 onClick={() => handleExport('guests')}
                 disabled={exporting === 'guests'}
-                className="w-full"
+                className="mt-auto w-full"
               >
-                {exporting === 'guests' ? 'Exporting...' : '📥 Export Venue Report'}
+                <Download className="h-4 w-4" />
+                {exporting === 'guests' ? 'Exporting...' : 'Export Venue Report'}
               </Button>
             </div>
 
-            <div>
-              <h4 className="font-medium mb-2">Meal Counts Only</h4>
-              <p className="text-sm text-muted-foreground mb-3">
+            <div className="flex h-full flex-col">
+              <h4 className="mb-2 font-medium">Meal Counts Only</h4>
+              <p className="mb-3 text-sm text-muted-foreground">
                 Meal totals by course type plus a table-by-table seating breakdown for food service
               </p>
               <Button
                 onClick={() => handleExport('meal-counts')}
                 disabled={exporting === 'meal-counts'}
                 variant="secondary"
-                className="w-full"
+                className="mt-auto w-full"
               >
-                {exporting === 'meal-counts' ? 'Exporting...' : '📥 Export Meal Counts'}
+                <Download className="h-4 w-4" />
+                {exporting === 'meal-counts' ? 'Exporting...' : 'Export Meal Counts'}
               </Button>
             </div>
           </div>
@@ -437,7 +525,7 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={handleSendReminderCampaign}
+            onClick={() => setPendingCampaign('reminder')}
             disabled={sendingReminderCampaign}
             variant="secondary"
             className="w-full sm:w-auto"
@@ -456,7 +544,7 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={handleSendThankYouCampaign}
+            onClick={() => setPendingCampaign('thank-you')}
             disabled={sendingThankYouCampaign}
             variant="secondary"
             className="w-full sm:w-auto"
@@ -475,7 +563,7 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={handleSendPhotoShareCampaign}
+            onClick={() => setPendingCampaign('photo')}
             disabled={sendingPhotoCampaign}
             className="w-full sm:w-auto"
           >
