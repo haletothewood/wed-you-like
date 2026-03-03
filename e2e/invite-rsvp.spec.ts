@@ -1,5 +1,20 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { loginAsAdmin } from './helpers'
+
+const selectAllPlaceholderComboboxes = async (page: Page) => {
+  while (true) {
+    const placeholderCombobox = page.locator('button[role="combobox"]', {
+      hasText: /^Select /,
+    }).first()
+
+    if ((await placeholderCombobox.count()) === 0) {
+      break
+    }
+
+    await placeholderCombobox.click()
+    await page.getByRole('option').first().click()
+  }
+}
 
 test('admin can create a group invite and guest can RSVP from token link', async ({ page }) => {
   await loginAsAdmin(page)
@@ -29,6 +44,14 @@ test('admin can create a group invite and guest can RSVP from token link', async
   await page.goto(`/rsvp/${token}`)
   await expect(page.getByText('Wedding RSVP')).toBeVisible()
   await page.getByRole('button', { name: /Yes, I.*be there/i }).click()
+
+  // Keep this flow resilient if earlier tests created meal options or custom-choice questions.
+  await selectAllPlaceholderComboboxes(page)
+  const allTextareas = page.locator('textarea')
+  for (let i = 0; i < await allTextareas.count(); i++) {
+    await allTextareas.nth(i).fill('Playwright answer')
+  }
+
   await page.getByRole('button', { name: 'Submit RSVP' }).click()
 
   await expect(page.getByText('Thank You!')).toBeVisible()
