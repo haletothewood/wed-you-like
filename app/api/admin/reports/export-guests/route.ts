@@ -33,6 +33,7 @@ export async function GET() {
     const allTableAssignments = await db
       .select({
         guestId: tableAssignments.guestId,
+        tableName: tables.name,
         tableNumber: tables.tableNumber,
       })
       .from(tableAssignments)
@@ -43,7 +44,7 @@ export async function GET() {
 
     const mealCounts: Record<string, { name: string; courseType: string; count: number }> = {}
     const tableAssignmentsByGuestId = new Map(
-      allTableAssignments.map((assignment) => [assignment.guestId, assignment.tableNumber])
+      allTableAssignments.map((assignment) => [assignment.guestId, assignment])
     )
     const mealSelectionsByGuestId = new Map<string, Array<typeof allMealSelections[number]>>()
 
@@ -64,14 +65,18 @@ export async function GET() {
         const main = guestMeals.find((ms) => ms.courseType === 'MAIN')?.mealOptionName || ''
         const dessert = guestMeals.find((ms) => ms.courseType === 'DESSERT')?.mealOptionName || ''
 
-        const assignedTableNumber = tableAssignmentsByGuestId.get(guest.id)
-        const tableNumber = assignedTableNumber ? `Table ${assignedTableNumber}` : 'Unassigned'
+        const assignment = tableAssignmentsByGuestId.get(guest.id)
+        const tableLabel = assignment
+          ? assignment.tableName && assignment.tableName.trim() !== ''
+            ? `${assignment.tableName} (Table ${assignment.tableNumber})`
+            : `Table ${assignment.tableNumber}`
+          : 'Unassigned'
         const guestType = getGuestTypeLabel({
           isChild: guest.isChild,
           isPlusOne: guest.isPlusOne,
         })
 
-        rows.push(toCsvRow([guest.name, guestType, tableNumber, starter, main, dessert]))
+        rows.push(toCsvRow([guest.name, guestType, tableLabel, starter, main, dessert]))
 
         if (starter) {
           const key = `STARTER:${starter}`

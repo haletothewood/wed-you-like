@@ -18,6 +18,7 @@ export async function GET() {
       db
         .select({
           id: tables.id,
+          name: tables.name,
           tableNumber: tables.tableNumber,
           capacity: tables.capacity,
         })
@@ -27,6 +28,7 @@ export async function GET() {
         .select({
           guestId: tableAssignments.guestId,
           tableId: tableAssignments.tableId,
+          tableName: tables.name,
           tableNumber: tables.tableNumber,
         })
         .from(tableAssignments)
@@ -67,6 +69,7 @@ export async function GET() {
             isPlusOne: guest.isPlusOne,
           }),
           tableId: assignment?.tableId ?? null,
+          tableName: assignment?.tableName ?? null,
           tableNumber: assignment?.tableNumber ?? null,
         }
       }),
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
     const targetTableRows = await db
       .select({
         id: tables.id,
+        name: tables.name,
         tableNumber: tables.tableNumber,
         capacity: tables.capacity,
       })
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
         assignment: {
           guestId,
           tableId,
+          tableName: targetTable.name,
           tableNumber: targetTable.tableNumber,
         },
       })
@@ -164,9 +169,13 @@ export async function POST(request: Request) {
     })
 
     if (!canAssign) {
+      const tableLabel =
+        targetTable.name && targetTable.name.trim() !== ''
+          ? `${targetTable.name} (Table ${targetTable.tableNumber})`
+          : `Table ${targetTable.tableNumber}`
       return NextResponse.json(
         {
-          error: `Table ${targetTable.tableNumber} is at capacity (${targetTable.capacity})`,
+          error: `${tableLabel} is at capacity (${targetTable.capacity})`,
         },
         { status: 409 }
       )
@@ -190,6 +199,7 @@ export async function POST(request: Request) {
       assignment: {
         guestId,
         tableId,
+        tableName: targetTable.name,
         tableNumber: targetTable.tableNumber,
       },
     })

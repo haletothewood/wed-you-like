@@ -10,6 +10,17 @@ const parsePositiveInt = (value: unknown): number | null => {
   return value
 }
 
+const parseTableName = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  return trimmed
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -21,6 +32,7 @@ export async function PATCH(
     const existingTable = await db
       .select({
         id: tables.id,
+        name: tables.name,
         tableNumber: tables.tableNumber,
         capacity: tables.capacity,
       })
@@ -32,6 +44,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Table not found' }, { status: 404 })
     }
 
+    const nextName =
+      body.name === undefined ? existingTable[0].name : parseTableName(body.name)
     const nextTableNumber =
       body.tableNumber === undefined
         ? existingTable[0].tableNumber
@@ -39,9 +53,9 @@ export async function PATCH(
     const nextCapacity =
       body.capacity === undefined ? existingTable[0].capacity : parsePositiveInt(body.capacity)
 
-    if (nextTableNumber === null || nextCapacity === null) {
+    if (nextName === null || nextTableNumber === null || nextCapacity === null) {
       return NextResponse.json(
-        { error: 'tableNumber and capacity must be positive integers' },
+        { error: 'name is required, and tableNumber/capacity must be positive integers' },
         { status: 400 }
       )
     }
@@ -79,6 +93,7 @@ export async function PATCH(
     await db
       .update(tables)
       .set({
+        name: nextName,
         tableNumber: nextTableNumber,
         capacity: nextCapacity,
         updatedAt: new Date(),
@@ -88,6 +103,7 @@ export async function PATCH(
     return NextResponse.json({
       table: {
         id,
+        name: nextName,
         tableNumber: nextTableNumber,
         capacity: nextCapacity,
         assignedSeats,

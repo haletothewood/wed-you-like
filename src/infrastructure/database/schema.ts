@@ -130,6 +130,7 @@ export const questionResponses = sqliteTable('question_responses', {
 
 export const tables = sqliteTable('tables', {
   id: text('id').primaryKey(),
+  name: text('name').notNull().default(''),
   tableNumber: integer('table_number').notNull().unique(),
   capacity: integer('capacity').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' })
