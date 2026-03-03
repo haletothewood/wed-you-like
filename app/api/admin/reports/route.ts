@@ -1,21 +1,36 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/infrastructure/database/connection'
-import { invites, rsvps, mealSelections, mealOptions } from '@/infrastructure/database/schema'
-import { eq, isNotNull } from 'drizzle-orm'
+import {
+  invites,
+  mealOptions,
+  mealSelections,
+  rsvps,
+  tableAssignments,
+  tables,
+} from '@/infrastructure/database/schema'
+import { asc, eq, isNotNull } from 'drizzle-orm'
+import { buildTableSeatingSummary } from '@/infrastructure/seating/seating'
 
 export async function GET() {
   try {
-    // Get all invites
-    const allInvites = await db.select().from(invites)
-
-    // Get invites that have been sent
-    const sentInvites = await db
-      .select()
-      .from(invites)
-      .where(isNotNull(invites.sentAt))
-
-    // Get all RSVPs
-    const allRsvps = await db.select().from(rsvps)
+    const [allInvites, sentInvites, allRsvps, allTables, allTableAssignments] = await Promise.all([
+      db.select().from(invites),
+      db.select().from(invites).where(isNotNull(invites.sentAt)),
+      db.select().from(rsvps),
+      db
+        .select({
+          id: tables.id,
+          tableNumber: tables.tableNumber,
+          capacity: tables.capacity,
+        })
+        .from(tables)
+        .orderBy(asc(tables.tableNumber)),
+      db
+        .select({
+          tableId: tableAssignments.tableId,
+        })
+        .from(tableAssignments),
+    ])
 
     // Get attending RSVPs
     const attendingRsvps = allRsvps.filter(rsvp => rsvp.isAttending)
@@ -84,6 +99,7 @@ export async function GET() {
         totalGuestsAttending,
       },
       mealCounts: mealCountsByCourse,
+      seatingSummary: buildTableSeatingSummary(allTables, allTableAssignments),
     })
   } catch (error) {
     console.error('Error fetching reports:', error)

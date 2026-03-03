@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/infrastructure/database/connection'
-import { mealSelections, mealOptions } from '@/infrastructure/database/schema'
+import { mealSelections, mealOptions, tableAssignments, tables } from '@/infrastructure/database/schema'
 import { toCsvRow } from '@/infrastructure/csv/serialize'
 import { eq } from 'drizzle-orm'
+
+interface TableMealCount {
+  tableLabel: string
+  tableSortOrder: number
+  courseType: string
+  name: string
+  count: number
+}
 
 export async function GET() {
   try {
@@ -13,9 +21,12 @@ export async function GET() {
         courseType: mealSelections.courseType,
         mealOptionName: mealOptions.name,
         mealOptionDescription: mealOptions.description,
+        tableNumber: tables.tableNumber,
       })
       .from(mealSelections)
       .leftJoin(mealOptions, eq(mealSelections.mealOptionId, mealOptions.id))
+      .leftJoin(tableAssignments, eq(mealSelections.guestId, tableAssignments.guestId))
+      .leftJoin(tables, eq(tableAssignments.tableId, tables.id))
 
     // Group meal selections by meal option
     const mealCounts = allMealSelections.reduce((acc, selection) => {
@@ -60,6 +71,52 @@ export async function GET() {
     rows.push(toCsvRow(['Starters', totals.STARTER]))
     rows.push(toCsvRow(['Main Courses', totals.MAIN]))
     rows.push(toCsvRow(['Desserts', totals.DESSERT]))
+
+    const tableMealCounts = allMealSelections.reduce((acc, selection) => {
+      const tableLabel = selection.tableNumber ? `Table ${selection.tableNumber}` : 'Unassigned'
+      const tableSortOrder = selection.tableNumber ?? Number.MAX_SAFE_INTEGER
+      const key = `${tableLabel}:${selection.courseType}:${selection.mealOptionName || 'Unknown'}`
+
+      if (!acc[key]) {
+        acc[key] = {
+          tableLabel,
+          tableSortOrder,
+          courseType: selection.courseType,
+          name: selection.mealOptionName || 'Unknown',
+          count: 0,
+        }
+      }
+
+      acc[key].count++
+      return acc
+    }, {} as Record<string, TableMealCount>)
+
+    const sortedTableMealCounts = Object.values(tableMealCounts).sort((a, b) => {
+      if (a.tableSortOrder !== b.tableSortOrder) {
+        return a.tableSortOrder - b.tableSortOrder
+      }
+
+      const courseOrder = { STARTER: 1, MAIN: 2, DESSERT: 3 }
+      const courseCompare =
+        courseOrder[a.courseType as keyof typeof courseOrder] -
+        courseOrder[b.courseType as keyof typeof courseOrder]
+      if (courseCompare !== 0) return courseCompare
+
+      return b.count - a.count
+    })
+
+    rows.push('')
+    rows.push(toCsvRow(['Meal Counts by Seating Table']))
+    rows.push(toCsvRow(['Table', 'Course Type', 'Meal Option', 'Guest Count']))
+
+    for (const item of sortedTableMealCounts) {
+      const courseLabel = item.courseType === 'STARTER'
+        ? 'Starter'
+        : item.courseType === 'MAIN'
+          ? 'Main Course'
+          : 'Dessert'
+      rows.push(toCsvRow([item.tableLabel, courseLabel, item.name, item.count]))
+    }
 
     const csv = rows.join('\n')
 

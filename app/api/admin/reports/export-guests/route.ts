@@ -9,6 +9,7 @@ import {
 } from '@/infrastructure/database/schema'
 import { toCsvRow } from '@/infrastructure/csv/serialize'
 import { eq } from 'drizzle-orm'
+import { getGuestTypeLabel } from '@/infrastructure/seating/seating'
 
 export async function GET() {
   try {
@@ -38,9 +39,19 @@ export async function GET() {
       .leftJoin(tables, eq(tableAssignments.tableId, tables.id))
 
     const rows: string[] = []
-    rows.push(toCsvRow(['Guest Name', 'Table', 'Starter', 'Main Course', 'Dessert']))
+    rows.push(toCsvRow(['Guest Name', 'Guest Type', 'Table', 'Starter', 'Main Course', 'Dessert']))
 
     const mealCounts: Record<string, { name: string; courseType: string; count: number }> = {}
+    const tableAssignmentsByGuestId = new Map(
+      allTableAssignments.map((assignment) => [assignment.guestId, assignment.tableNumber])
+    )
+    const mealSelectionsByGuestId = new Map<string, Array<typeof allMealSelections[number]>>()
+
+    for (const selection of allMealSelections) {
+      const existing = mealSelectionsByGuestId.get(selection.guestId) ?? []
+      existing.push(selection)
+      mealSelectionsByGuestId.set(selection.guestId, existing)
+    }
 
     for (const invite of allInvites) {
       const rsvp = allRsvps.find((r) => r.inviteId === invite.id)
@@ -48,17 +59,19 @@ export async function GET() {
       if (!rsvp?.isAttending) continue
 
       for (const guest of invite.guests) {
-        const guestMeals = allMealSelections.filter((ms) => ms.guestId === guest.id)
+        const guestMeals = mealSelectionsByGuestId.get(guest.id) ?? []
         const starter = guestMeals.find((ms) => ms.courseType === 'STARTER')?.mealOptionName || ''
         const main = guestMeals.find((ms) => ms.courseType === 'MAIN')?.mealOptionName || ''
         const dessert = guestMeals.find((ms) => ms.courseType === 'DESSERT')?.mealOptionName || ''
 
-        const tableAssignment = allTableAssignments.find((ta) => ta.guestId === guest.id)
-        const tableNumber = tableAssignment?.tableNumber
-          ? `Table ${tableAssignment.tableNumber}`
-          : 'Unassigned'
+        const assignedTableNumber = tableAssignmentsByGuestId.get(guest.id)
+        const tableNumber = assignedTableNumber ? `Table ${assignedTableNumber}` : 'Unassigned'
+        const guestType = getGuestTypeLabel({
+          isChild: guest.isChild,
+          isPlusOne: guest.isPlusOne,
+        })
 
-        rows.push(toCsvRow([guest.name, tableNumber, starter, main, dessert]))
+        rows.push(toCsvRow([guest.name, guestType, tableNumber, starter, main, dessert]))
 
         if (starter) {
           const key = `STARTER:${starter}`

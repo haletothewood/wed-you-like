@@ -73,11 +73,11 @@ export default function Admin() {
       enabled: true,
     },
     {
-      href: '/admin' as const,
+      href: '/admin/tables' as const,
       icon: '🪑',
       title: 'Table Assignments',
-      description: 'Coming soon: Assign guests to tables',
-      enabled: false,
+      description: 'Assign guests to tables with live capacity tracking',
+      enabled: true,
     },
   ] as const
 

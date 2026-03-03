@@ -22,6 +22,14 @@ interface ReportData {
     MAIN: Array<{ name: string; description: string | null; count: number }>
     DESSERT: Array<{ name: string; description: string | null; count: number }>
   }
+  seatingSummary: Array<{
+    id: string
+    tableNumber: number
+    capacity: number
+    assignedSeats: number
+    availableSeats: number
+    isFull: boolean
+  }>
 }
 
 export default function ReportsPage() {
@@ -321,6 +329,35 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
+      {/* Seating Summary */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Table Seating Summary</CardTitle>
+          <CardDescription>Assigned seats by table (plus-ones and children count as seats)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.seatingSummary.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">No tables configured yet</div>
+          ) : (
+            <div className="space-y-2">
+              {data.seatingSummary.map((table) => (
+                <div key={table.id} className="flex items-center justify-between rounded-lg bg-muted p-3">
+                  <div>
+                    <div className="font-medium">Table {table.tableNumber}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {table.assignedSeats}/{table.capacity} seats assigned
+                    </div>
+                  </div>
+                  <Badge variant={table.isFull ? 'destructive' : 'outline'}>
+                    {table.isFull ? 'Full' : `${table.availableSeats} open`}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Export Options */}
       <Card>
         <CardHeader>
@@ -346,7 +383,7 @@ export default function ReportsPage() {
             <div>
               <h4 className="font-medium mb-2">Meal Counts Only</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Just the meal totals by course type (for quick reference)
+                Meal totals by course type plus a table-by-table seating breakdown for food service
               </p>
               <Button
                 onClick={() => handleExport('meal-counts')}
