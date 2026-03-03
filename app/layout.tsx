@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Wedding Invite App',
-  description: 'Manage your wedding invites and RSVPs',
+  title: 'Wed You Like',
+  description: 'Modern wedding invite and RSVP management',
 }
 
 export default function RootLayout({

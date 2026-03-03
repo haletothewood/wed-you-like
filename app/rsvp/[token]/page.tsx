@@ -147,7 +147,7 @@ export default function RSVP() {
     }
 
     if (isAttending && plusOneName.trim() && !attendingGuests.some((g) => g.guestId === 'PLUS_ONE')) {
-      nextValidationErrors.push('You entered a plus one name. Click Add to include them.')
+      nextValidationErrors.push('You entered a plus-one name. Select Add to include them.')
     }
 
     if (isAttending && invite) {
@@ -385,10 +385,9 @@ export default function RSVP() {
   if (error) {
     return (
       <div className="hero-wash min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md border-border/70 bg-card/95 text-center shadow-xl">
+        <Card className="surface-panel w-full max-w-md text-center">
           <CardHeader>
-            <div className="text-6xl mb-4">😕</div>
-            <CardTitle>Oops!</CardTitle>
+            <CardTitle>Invitation not available</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-destructive">{error}</p>
@@ -401,10 +400,9 @@ export default function RSVP() {
   if (submitted) {
     return (
       <div className="hero-wash min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg border-border/70 bg-card/95 text-center shadow-xl">
+        <Card className="surface-panel w-full max-w-lg text-center">
           <CardHeader>
-            <div className="text-7xl mb-4">🎉</div>
-            <CardTitle className="text-2xl sm:text-3xl">Thank You!</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl">Thanks, you&apos;re all set</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-lg">
@@ -444,11 +442,10 @@ export default function RSVP() {
   return (
     <div className="hero-wash min-h-screen p-4 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-2xl space-y-4 sm:space-y-6">
-        <Card className="border-border/70 bg-card/95 text-center shadow-lg">
+        <Card className="surface-panel text-center">
           <CardHeader>
-            <div className="text-6xl mb-4">💒</div>
             <CardTitle className="text-2xl sm:text-3xl">Wedding RSVP</CardTitle>
-            <CardDescription className="text-lg">For: {displayName}</CardDescription>
+            <CardDescription className="text-lg">Guest: {displayName}</CardDescription>
             <div className="pt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.12em]">
               Step {Math.min(completedSteps + 1, totalSteps)} of {totalSteps}
             </div>
@@ -505,7 +502,7 @@ export default function RSVP() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>1. Will you be attending?</CardTitle>
+              <CardTitle>1. Are you attending?</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <Button
@@ -540,7 +537,7 @@ export default function RSVP() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>2. Who will be attending?</CardTitle>
+                  <CardTitle>2. Who is attending?</CardTitle>
                   <CardDescription>
                     {invite.groupName ?
                       'Select which guests from your group will attend' :
@@ -592,7 +589,7 @@ export default function RSVP() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Label htmlFor="plusOne">Add Plus One (Optional)</Label>
+                            <Label htmlFor="plusOne">Add plus-one guest (optional)</Label>
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <Input
                               id="plusOne"
@@ -630,8 +627,8 @@ export default function RSVP() {
               {(starters.length > 0 || mains.length > 0 || desserts.length > 0) && attendingGuests.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Meal Selections</CardTitle>
-                    <CardDescription>Please select meal preferences for each attending guest</CardDescription>
+                    <CardTitle>Meal selections</CardTitle>
+                    <CardDescription>Select menu choices for each attending guest.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {attendingGuests.map((guest) => (
@@ -733,7 +730,7 @@ export default function RSVP() {
               {invite.customQuestions.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Additional Questions</CardTitle>
+                    <CardTitle>Additional questions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {invite.customQuestions.map((question) => (
@@ -812,16 +809,16 @@ export default function RSVP() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Dietary Requirements</CardTitle>
+                  <CardTitle>Dietary requirements</CardTitle>
                   <CardDescription>
-                    Please let us know of any allergies or dietary restrictions
+                    Let us know about any allergies or dietary requirements.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Textarea
                     value={dietaryRequirements}
                     onChange={(e) => setDietaryRequirements(e.target.value)}
-                    placeholder="e.g., Vegetarian, Gluten-free, Nut allergy..."
+                    placeholder="For example: vegetarian, gluten-free, nut allergy"
                     rows={3}
                   />
                 </CardContent>
@@ -829,7 +826,7 @@ export default function RSVP() {
             </>
           )}
 
-          <Card className="border-border/70 bg-muted/45">
+          <Card className="border-border/70 bg-muted/35">
             <CardContent className="pt-6">
               <Button
                 type="submit"

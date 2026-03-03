@@ -5,6 +5,15 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Mail,
+  UtensilsCrossed,
+  CircleHelp,
+  FileText,
+  Settings,
+  Armchair,
+  ArrowRight,
+} from 'lucide-react'
 
 interface QuickStats {
   totalInvites: number
@@ -39,43 +48,43 @@ export default function Admin() {
   const features = [
     {
       href: '/admin/invites' as const,
-      icon: '✉️',
-      title: 'Invites',
-      description: 'Create and manage guest invitations with unique RSVP links',
+      icon: Mail,
+      title: 'Invitations',
+      description: 'Create and manage guest invites with unique RSVP links',
       enabled: true,
     },
     {
       href: '/admin/meal-options' as const,
-      icon: '🍽️',
-      title: 'Meal Options',
+      icon: UtensilsCrossed,
+      title: 'Menu Options',
       description: 'Configure menu options for starters, mains, and desserts',
       enabled: true,
     },
     {
       href: '/admin/custom-questions' as const,
-      icon: '❓',
-      title: 'Custom Questions',
+      icon: CircleHelp,
+      title: 'Guest Questions',
       description: 'Add custom questions for guests (text, single choice, multiple choice)',
       enabled: true,
     },
     {
       href: '/admin/email-templates' as const,
-      icon: '📧',
+      icon: FileText,
       title: 'Email Templates',
       description: 'Manage and configure email invitation templates',
       enabled: true,
     },
     {
       href: '/admin/wedding-settings' as const,
-      icon: '⚙️',
-      title: 'Wedding Settings',
+      icon: Settings,
+      title: 'Event Details',
       description: 'Configure your wedding details, date, time, and venue',
       enabled: true,
     },
     {
       href: '/admin/tables' as const,
-      icon: '🪑',
-      title: 'Table Assignments',
+      icon: Armchair,
+      title: 'Table Plan',
       description: 'Assign guests to tables with live capacity tracking',
       enabled: true,
     },
@@ -85,25 +94,27 @@ export default function Admin() {
     <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Dashboard"
-        description="Welcome to your wedding RSVP management system"
+        description="Everything you need to run invites, RSVPs, and guest logistics."
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
         {features.map((feature) => (
           feature.enabled ? (
             <Link key={feature.href} href={feature.href}>
-              <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1 hover:border-primary cursor-pointer">
+              <Card className="surface-panel h-full cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl">
                 <CardHeader>
-                  <div className="text-4xl mb-3">{feature.icon}</div>
-                  <CardTitle>{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
+                  <div className="mb-3 inline-flex w-fit rounded-xl border border-primary/20 bg-primary/10 p-2.5 text-primary">
+                    <feature.icon className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                  <CardDescription className="leading-relaxed">{feature.description}</CardDescription>
                 </CardHeader>
               </Card>
             </Link>
           ) : (
             <Card key={feature.href} className="h-full opacity-60">
               <CardHeader>
-                <div className="text-4xl mb-3">{feature.icon}</div>
+                <feature.icon className="mb-3 h-5 w-5" />
                 <CardTitle className="text-muted-foreground">{feature.title}</CardTitle>
                 <CardDescription>{feature.description}</CardDescription>
               </CardHeader>
@@ -112,18 +123,19 @@ export default function Admin() {
         ))}
       </div>
 
-      <Card className="mt-6 border-primary/20 bg-muted/50">
+      <Card className="surface-panel mt-6">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-lg">Quick Stats</CardTitle>
+              <CardTitle className="text-lg">Live Snapshot</CardTitle>
               <CardDescription>
-                Overview of your wedding RSVPs
+                Current RSVP progress at a glance.
               </CardDescription>
             </div>
             <Link href="/admin/reports">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                View Full Reports →
+                Open reports
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -135,11 +147,11 @@ export default function Admin() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalInvites}</div>
-                <div className="text-sm text-muted-foreground mt-1">Total Invites</div>
+                <div className="text-sm text-muted-foreground mt-1">Invites sent</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalRsvps}</div>
-                <div className="text-sm text-muted-foreground mt-1">RSVPs Received</div>
+                <div className="text-sm text-muted-foreground mt-1">Responses</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-success sm:text-3xl">{stats.attending}</div>

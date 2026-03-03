@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LockKeyhole } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Login failed')
+        setError(data.error || 'Sign-in failed')
         setLoading(false)
         return
       }
@@ -45,20 +46,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="hero-wash min-h-screen p-4 sm:p-6">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-sm items-center sm:min-h-[calc(100vh-3rem)]">
-        <Card className="w-full border-border/70 bg-card/95 shadow-2xl">
-          <CardHeader className="space-y-2 text-center">
-            <CardTitle className="text-2xl font-semibold sm:text-3xl">Wedding RSVP</CardTitle>
-            <CardDescription className="text-sm sm:text-base">Admin Portal</CardDescription>
+    <div className="hero-wash surface-grid min-h-screen px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-sm items-center">
+        <Card className="surface-panel w-full">
+          <CardHeader className="space-y-3 text-center">
+            <div className="mx-auto rounded-full border border-primary/25 bg-primary/10 p-3 text-primary">
+              <LockKeyhole className="h-5 w-5" />
+            </div>
+            <CardTitle className="text-3xl font-semibold">Wed You Like</CardTitle>
+            <CardDescription className="text-sm sm:text-base">Admin sign-in</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Email or username</Label>
                 <Input
                   id="username"
                   type="text"
+                  placeholder="you@example.com"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={loading}
@@ -71,6 +76,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
@@ -85,7 +91,7 @@ export default function LoginPage() {
               )}
 
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
           </CardContent>
