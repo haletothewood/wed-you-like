@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ export default function CustomQuestionsPage() {
   const [options, setOptions] = useState<string[]>(['', ''])
   const [isRequired, setIsRequired] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   const fetchQuestions = useCallback(async () => {
     try {
@@ -50,7 +52,7 @@ export default function CustomQuestionsPage() {
       const data = await response.json()
       setQuestions(data.questions || [])
     } catch {
-      alert('Failed to load custom questions')
+      setNotice({ variant: 'destructive', message: 'Failed to load custom questions' })
     } finally {
       setLoading(false)
     }
@@ -87,7 +89,7 @@ export default function CustomQuestionsPage() {
           questionType === 'MULTIPLE_CHOICE') &&
         filteredOptions.length < 2
       ) {
-        alert('Choice questions must have at least 2 options')
+        setNotice({ variant: 'destructive', message: 'Choice questions must have at least 2 options' })
         setSubmitting(false)
         return
       }
@@ -118,9 +120,13 @@ export default function CustomQuestionsPage() {
       setQuestionType('TEXT')
       setOptions(['', ''])
       setIsRequired(false)
+      setNotice({ variant: 'default', message: 'Question added.' })
       await fetchQuestions()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create question')
+      setNotice({
+        variant: 'destructive',
+        message: err instanceof Error ? err.message : 'Failed to create question',
+      })
     } finally {
       setSubmitting(false)
     }
@@ -140,8 +146,12 @@ export default function CustomQuestionsPage() {
       }
 
       await fetchQuestions()
+      setNotice({ variant: 'default', message: 'Question deleted.' })
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete question')
+      setNotice({
+        variant: 'destructive',
+        message: err instanceof Error ? err.message : 'Failed to delete question',
+      })
     }
   }
 
@@ -155,6 +165,11 @@ export default function CustomQuestionsPage() {
         title="Custom Questions Management"
         description="Add custom questions for guests to answer with their RSVP"
       />
+      {notice && (
+        <Alert variant={notice.variant} className="mb-6">
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

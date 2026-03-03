@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface SeatingTable {
   id: string
@@ -45,6 +46,7 @@ export default function TablesAdminPage() {
   const [creatingTable, setCreatingTable] = useState(false)
   const [updatingGuestId, setUpdatingGuestId] = useState<string | null>(null)
   const [deletingTableId, setDeletingTableId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   useEffect(() => {
     fetchSeatingData()
@@ -89,8 +91,12 @@ export default function TablesAdminPage() {
       setTableNumber('')
       setCapacity('')
       await fetchSeatingData()
+      setNotice({ variant: 'default', message: 'Table created.' })
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to create table')
+      setNotice({
+        variant: 'destructive',
+        message: error instanceof Error ? error.message : 'Failed to create table',
+      })
     } finally {
       setCreatingTable(false)
     }
@@ -109,8 +115,12 @@ export default function TablesAdminPage() {
         throw new Error(data.error || 'Failed to delete table')
       }
       await fetchSeatingData()
+      setNotice({ variant: 'default', message: 'Table deleted.' })
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to delete table')
+      setNotice({
+        variant: 'destructive',
+        message: error instanceof Error ? error.message : 'Failed to delete table',
+      })
     } finally {
       setDeletingTableId(null)
     }
@@ -130,8 +140,12 @@ export default function TablesAdminPage() {
         throw new Error(data.error || 'Failed to update assignment')
       }
       await fetchSeatingData()
+      setNotice({ variant: 'default', message: 'Guest assignment updated.' })
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to update assignment')
+      setNotice({
+        variant: 'destructive',
+        message: error instanceof Error ? error.message : 'Failed to update assignment',
+      })
     } finally {
       setUpdatingGuestId(null)
     }
@@ -147,6 +161,11 @@ export default function TablesAdminPage() {
         title="Table Assignments"
         description="Assign attending guests to tables. Children and plus-ones are marked explicitly and count as seats."
       />
+      {notice && (
+        <Alert variant={notice.variant} className="mb-6">
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>
