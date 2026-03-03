@@ -62,10 +62,10 @@ Status legend: `TODO` | `IN PROGRESS` | `DONE`
 - [x] `DONE` Dedicated photo upload page (`/photos/[token]`)
 - [x] `DONE` Day-of photo-share email campaign
 - [x] `DONE` Add invite reminders for non-responders
-- [ ] `TODO` Add invite list filters/search (`sent`, `responded`, `attending`, name/email)
+- [x] `DONE` Add invite list filters/search (`sent`, `responded`, `attending`, name/email)
 - [x] `DONE` Improve RSVP UX polish (clear validation messages, inline meal selection highlighting)
-- [ ] `TODO` Bug bash pass across admin + RSVP flows
-- [ ] `TODO` Add/expand tests for fixed bugs
+- [x] `DONE` Bug bash pass across admin + RSVP flows
+- [x] `DONE` Add/expand tests for fixed bugs
 
 ### Phase 2: Venue and Seating Workflow (Next)
 

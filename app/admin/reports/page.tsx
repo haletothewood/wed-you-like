@@ -51,6 +51,19 @@ export default function ReportsPage() {
     setExporting(type)
     try {
       const response = await fetch(`/api/admin/reports/export-${type}`)
+      if (!response.ok) {
+        let message = 'Failed to export data'
+        try {
+          const data = await response.json()
+          if (typeof data?.error === 'string' && data.error.trim()) {
+            message = data.error
+          }
+        } catch {
+          // ignore JSON parsing failures and keep fallback message
+        }
+        throw new Error(message)
+      }
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')

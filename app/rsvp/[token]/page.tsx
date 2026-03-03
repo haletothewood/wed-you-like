@@ -195,7 +195,11 @@ export default function RSVP() {
       const childrenCount = isAttending ? attendingGuests.filter(g => !g.isAdult).length : 0
 
       const mealSelectionsArray = isAttending && invite
-        ? Object.entries(mealSelections).flatMap(([guestId, courses]) =>
+        ? Object.entries(mealSelections)
+            .filter(([guestId]) =>
+              attendingGuests.some((attendingGuest) => attendingGuest.guestId === guestId)
+            )
+            .flatMap(([guestId, courses]) =>
             Object.entries(courses).map(([courseType, mealOptionId]) => ({
               guestId,
               mealOptionId,
@@ -293,9 +297,13 @@ export default function RSVP() {
     }))
   }
 
-  const toggleMultipleChoice = (questionId: string, option: string) => {
+  const clearFeedbackState = () => {
     setValidationErrors([])
     setSubmitError(null)
+  }
+
+  const toggleMultipleChoice = (questionId: string, option: string) => {
+    clearFeedbackState()
     setMultipleChoiceSelections((prev) => {
       const current = prev[questionId] || []
       const isSelected = current.includes(option)
@@ -309,8 +317,21 @@ export default function RSVP() {
   }
 
   const toggleGuest = (guestId: string) => {
-    setValidationErrors([])
-    setSubmitError(null)
+    clearFeedbackState()
+
+    const isSelected = attendingGuests.some((guest) => guest.guestId === guestId)
+    if (isSelected) {
+      setMealSelections((prev) => {
+        if (!prev[guestId]) return prev
+        const updated = { ...prev }
+        delete updated[guestId]
+        return updated
+      })
+      setMissingMealSelectionKeys((prev) =>
+        prev.filter((key) => !key.startsWith(`${guestId}:`))
+      )
+    }
+
     setAttendingGuests((prev) => {
       const isAttending = prev.some(g => g.guestId === guestId)
       if (isAttending) {
@@ -331,8 +352,7 @@ export default function RSVP() {
 
   const addPlusOne = () => {
     if (!plusOneName.trim() || !invite) return
-    setValidationErrors([])
-    setSubmitError(null)
+    clearFeedbackState()
     setAttendingGuests((prev) => [...prev, {
       guestId: 'PLUS_ONE',
       name: plusOneName,
@@ -342,9 +362,11 @@ export default function RSVP() {
   }
 
   const removePlusOne = () => {
-    setValidationErrors([])
-    setSubmitError(null)
+    clearFeedbackState()
     setAttendingGuests((prev) => prev.filter(g => g.guestId !== 'PLUS_ONE'))
+    setMissingMealSelectionKeys((prev) =>
+      prev.filter((key) => !key.startsWith('PLUS_ONE:'))
+    )
     setMealSelections((prev) => {
       const updated = { ...prev }
       delete updated['PLUS_ONE']
@@ -493,8 +515,7 @@ export default function RSVP() {
                 className={isAttending === true ? 'bg-success hover:bg-success/90' : ''}
                 onClick={() => {
                   setIsAttending(true)
-                  setValidationErrors([])
-                  setSubmitError(null)
+                  clearFeedbackState()
                   setMissingMealSelectionKeys([])
                 }}
               >
@@ -506,8 +527,7 @@ export default function RSVP() {
                 variant={isAttending === false ? 'destructive' : 'outline'}
                 onClick={() => {
                   setIsAttending(false)
-                  setValidationErrors([])
-                  setSubmitError(null)
+                  clearFeedbackState()
                   setMissingMealSelectionKeys([])
                 }}
               >
@@ -730,12 +750,13 @@ export default function RSVP() {
                         {question.questionType === 'TEXT' && (
                           <Textarea
                             value={questionResponses[question.id] || ''}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              clearFeedbackState()
                               setQuestionResponses({
                                 ...questionResponses,
                                 [question.id]: e.target.value,
                               })
-                            }
+                            }}
                             required={question.isRequired}
                           />
                         )}
@@ -743,12 +764,13 @@ export default function RSVP() {
                         {question.questionType === 'SINGLE_CHOICE' && (
                           <Select
                             value={questionResponses[question.id]}
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
+                              clearFeedbackState()
                               setQuestionResponses({
                                 ...questionResponses,
                                 [question.id]: value,
                               })
-                            }
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select an option" />

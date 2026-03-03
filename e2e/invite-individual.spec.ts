@@ -8,7 +8,7 @@ test('admin can create an individual invite with plus one', async ({ page }) => 
   await page.getByRole('button', { name: 'Create Invite' }).click()
 
   await page.getByLabel(/Guest Name/i).fill('Solo Guest')
-  await page.getByLabel(/^Email/i).fill('solo@example.com')
+  await page.locator('#email').fill('solo@example.com')
   await page.getByLabel('Allow Plus One').click()
 
   await page.getByRole('button', { name: 'Create Individual Invite' }).click()
