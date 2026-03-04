@@ -66,7 +66,7 @@ const templateVariables: Array<{
   { key: 'additional_info', description: 'Additional info from settings', optional: true },
 ]
 
-const samplePreviewValues: Record<string, string | number> = {
+const defaultPreviewValues: Record<string, string | number> = {
   partner1_name: 'Alex',
   partner2_name: 'David',
   wedding_date: 'Saturday, June 15th, 2026',
@@ -170,6 +170,32 @@ const injectHeroImageIntoHtml = (html: string, imageUrl: string): string => {
   return html.replace(bodyOpenTagMatch[0], `${bodyOpenTagMatch[0]}${heroImageBlock}`)
 }
 
+const applyThemePaletteToHtml = (html: string): string => {
+  const replacements: Array<[RegExp, string]> = [
+    [/#667eea/gi, '#5b623f'],
+    [/#2d6cdf/gi, '#5b623f'],
+    [/#e74c3c/gi, '#1d1d1b'],
+    [/#fff\b/gi, '#ecebe1'],
+    [/\bwhite\b/gi, '#ecebe1'],
+    [/#f9f9f9/gi, '#ecebe1'],
+    [/#f7f7f7/gi, '#ecebe1'],
+    [/#f5f5f5/gi, '#e7e6dc'],
+    [/#f2f2f2/gi, '#e7e6dc'],
+    [/#ddd\b/gi, '#d2d1c3'],
+    [/#777\b/gi, '#5f5f56'],
+    [/#666\b/gi, '#5f5f56'],
+    [/#555\b/gi, '#4f4f46'],
+    [/#333\b/gi, '#1d1d1b'],
+  ]
+
+  let updated = html
+  for (const [pattern, next] of replacements) {
+    updated = updated.replace(pattern, next)
+  }
+
+  return updated
+}
+
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -195,9 +221,10 @@ export default function EmailTemplatesPage() {
   const [heroImageInputKey, setHeroImageInputKey] = useState(0)
   const effectiveHeroImagePreviewUrl = heroImagePreviewUrl || heroImageUrl
   const [guidedFields, setGuidedFields] = useState<GuidedTemplateFields>(defaultGuidedFields)
+  const [previewValues, setPreviewValues] = useState<Record<string, string | number>>(defaultPreviewValues)
   const previewSubject = useMemo(
-    () => renderTemplate(subject || '(No subject)', samplePreviewValues),
-    [subject]
+    () => renderTemplate(subject || '(No subject)', previewValues),
+    [previewValues, subject]
   )
   const previewHtml = useMemo(
     () =>
@@ -205,11 +232,15 @@ export default function EmailTemplatesPage() {
         renderTemplate(
           htmlContent ||
             '<p style="font-family: Arial, sans-serif;">Add template HTML to see a preview.</p>',
-          samplePreviewValues
+          previewValues
         ),
         effectiveHeroImagePreviewUrl
       ),
-    [effectiveHeroImagePreviewUrl, htmlContent]
+    [effectiveHeroImagePreviewUrl, htmlContent, previewValues]
+  )
+  const hasLegacyPalette = useMemo(
+    () => /#667eea|#2d6cdf|#e74c3c|#f9f9f9|#f7f7f7|#f5f5f5|#f2f2f2|#ddd\b|#777\b|#666\b|#555\b|#333\b|\bwhite\b|#fff\b/i.test(htmlContent),
+    [htmlContent]
   )
 
   useEffect(() => {
@@ -250,6 +281,7 @@ export default function EmailTemplatesPage() {
     setHeroImagePreviewUrl('')
     setHeroImageFileName('')
     setHeroImageInputKey((prev) => prev + 1)
+    setPreviewValues(defaultPreviewValues)
     setEditingId(null)
     setTestEmail('')
     setTestSendMessage('')
@@ -299,6 +331,19 @@ export default function EmailTemplatesPage() {
 
   const applyGuidedTemplate = () => {
     setHtmlContent(generateGuidedTemplateHtml(guidedFields))
+  }
+
+  const handleApplyThemePalette = () => {
+    const themedHtml = applyThemePaletteToHtml(htmlContent)
+    if (themedHtml === htmlContent) {
+      setMessage('No legacy palette colors found in current HTML')
+      setIsError(false)
+      return
+    }
+
+    setHtmlContent(themedHtml)
+    setMessage('Theme colors applied to current HTML. Save template to persist.')
+    setIsError(false)
   }
 
   const handleCancel = () => {
@@ -378,6 +423,7 @@ export default function EmailTemplatesPage() {
           subject,
           htmlContent,
           heroImageUrl: heroImageUrl || undefined,
+          previewOverrides: previewValues,
         }),
       })
 
@@ -451,6 +497,16 @@ export default function EmailTemplatesPage() {
     setHeroImagePreviewUrl('')
     setHeroImageFileName('')
     setHeroImageInputKey((prev) => prev + 1)
+  }
+
+  const updatePreviewValue = (key: string, value: string) => {
+    setPreviewValues((prev) => ({
+      ...prev,
+      [key]:
+        key === 'adults_count' || key === 'children_count'
+          ? Number(value || 0)
+          : value,
+    }))
   }
 
   const handleDelete = async (id: string) => {
@@ -629,7 +685,14 @@ export default function EmailTemplatesPage() {
                       Guided mode generates HTML. Raw mode gives full HTML control.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleApplyThemePalette}
+                    >
+                      {hasLegacyPalette ? 'Apply Theme Colors' : 'Theme Colors Applied'}
+                    </Button>
                     <Button
                       type="button"
                       variant={editorMode === 'guided' ? 'default' : 'outline'}
@@ -767,6 +830,35 @@ export default function EmailTemplatesPage() {
                     srcDoc={previewHtml}
                     className="w-full h-[360px] bg-white"
                   />
+                </div>
+                <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs font-medium">Preview placeholder values</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreviewValues(defaultPreviewValues)}
+                    >
+                      Reset Preview Values
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {templateVariables.map((variable) => (
+                      <div key={variable.key} className="space-y-1">
+                        <Label htmlFor={`preview-${variable.key}`} className="text-xs">
+                          {variable.key}
+                        </Label>
+                        <Input
+                          id={`preview-${variable.key}`}
+                          value={String(previewValues[variable.key] ?? '')}
+                          type={variable.key === 'adults_count' || variable.key === 'children_count' ? 'number' : 'text'}
+                          onChange={(e) => updatePreviewValue(variable.key, e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

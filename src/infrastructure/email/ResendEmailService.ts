@@ -6,15 +6,25 @@ import type {
 
 export class ResendEmailService implements EmailService {
   private resend: Resend
+  private fromEmail: string
 
   constructor(apiKey: string) {
     this.resend = new Resend(apiKey)
+    this.fromEmail = (process.env.RESEND_FROM_EMAIL || '').trim()
   }
 
   async sendEmail(request: EmailSendRequest): Promise<void> {
+    if (!this.fromEmail) {
+      throw new Error('RESEND_FROM_EMAIL is not configured')
+    }
+
+    if (this.fromEmail.includes('yourdomain.com')) {
+      throw new Error('RESEND_FROM_EMAIL must use a verified domain')
+    }
+
     try {
       const result = await this.resend.emails.send({
-        from: 'Wedding RSVP <rsvp@yourdomain.com>',
+        from: this.fromEmail,
         to: request.to,
         subject: request.subject,
         html: request.html,

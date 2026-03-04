@@ -33,6 +33,23 @@ const buildVariables = (
   children_count: 0,
 })
 
+const previewOverrideKeys = new Set([
+  'partner1_name',
+  'partner2_name',
+  'wedding_date',
+  'wedding_time',
+  'venue_name',
+  'venue_address',
+  'dress_code',
+  'rsvp_deadline',
+  'registry_url',
+  'additional_info',
+  'guest_name',
+  'rsvp_url',
+  'adults_count',
+  'children_count',
+])
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -49,6 +66,18 @@ export async function POST(request: Request) {
     const baseUrl = getBaseUrl(request)
     const settings = await weddingSettingsRepository.get()
     const variables = buildVariables(baseUrl, settings)
+    const previewOverrides =
+      body.previewOverrides && typeof body.previewOverrides === 'object'
+        ? (body.previewOverrides as Record<string, unknown>)
+        : {}
+
+    for (const [key, value] of Object.entries(previewOverrides)) {
+      if (!previewOverrideKeys.has(key)) continue
+      if (value === undefined || value === null) continue
+      if ((key === 'adults_count' || key === 'children_count') && typeof value !== 'number') continue
+      if (key !== 'adults_count' && key !== 'children_count' && typeof value !== 'string') continue
+      variables[key] = value as string | number
+    }
 
     let subject = ''
     let htmlContent = ''
