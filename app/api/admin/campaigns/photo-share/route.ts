@@ -61,12 +61,12 @@ export async function POST(request: Request) {
               <p>Hi ${guestName},</p>
               <p>We're collecting guest photos from ${dateLabel}. Please use your personal link below to upload your pictures:</p>
               <p style="margin: 22px 0;">
-                <a href="${escapedShareUrl}" style="background: #2d6cdf; color: #fff; text-decoration: none; padding: 12px 22px; border-radius: 8px; display: inline-block; font-weight: 600;">
+                <a href="${escapedShareUrl}" style="background: #5b623f; color: #ecebe1; text-decoration: none; padding: 12px 22px; border-radius: 8px; display: inline-block; font-weight: 600;">
                   Open Photo Upload Page
                 </a>
               </p>
               <p>If the button doesn't work, use this link:</p>
-              <p><a href="${escapedShareUrl}">${escapedShareUrl}</a></p>
+              <p><a href="${escapedShareUrl}" style="color: #5b623f;">${escapedShareUrl}</a></p>
               <p style="margin-top: 24px;">Thank you for celebrating with us.<br/>${escapedCoupleNames}</p>
             </div>
           `
