@@ -221,5 +221,5 @@ Optional:
 npm run db:generate
 npm run db:migrate
 npm run db:studio
-npm run db:seed-all
+npm run db:seed
 ```

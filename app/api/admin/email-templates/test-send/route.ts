@@ -4,14 +4,11 @@ import { DrizzleWeddingSettingsRepository } from '@/infrastructure/database/repo
 import { ResendEmailService } from '@/infrastructure/email/ResendEmailService'
 import { TemplateRenderer } from '@/infrastructure/email/TemplateRenderer'
 import { emailSchema } from '@/application/validation/schemas'
+import { getCampaignBaseUrl } from '../../campaigns/_shared'
 
 const emailTemplateRepository = new DrizzleEmailTemplateRepository()
 const weddingSettingsRepository = new DrizzleWeddingSettingsRepository()
 const emailService = new ResendEmailService(process.env.RESEND_API_KEY || '')
-
-const getBaseUrl = (request: Request): string =>
-  process.env.BASE_URL ||
-  `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`
 
 const buildVariables = (
   baseUrl: string,
@@ -63,7 +60,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const baseUrl = getBaseUrl(request)
+    const baseUrl = getCampaignBaseUrl(request)
     const settings = await weddingSettingsRepository.get()
     const variables = buildVariables(baseUrl, settings)
     const previewOverrides =

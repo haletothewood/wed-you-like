@@ -10,10 +10,18 @@ import {
 } from '@/infrastructure/database/schema'
 import { asc, eq, isNotNull } from 'drizzle-orm'
 import { buildTableSeatingSummary } from '@/infrastructure/seating/seating'
+import { getCampaignRunSummaries } from '../campaigns/_shared'
 
 export async function GET() {
   try {
-    const [allInvites, sentInvites, allRsvps, allTables, allTableAssignments] = await Promise.all([
+    const [
+      allInvites,
+      sentInvites,
+      allRsvps,
+      allTables,
+      allTableAssignments,
+      campaignRuns,
+    ] = await Promise.all([
       db.select().from(invites),
       db.select().from(invites).where(isNotNull(invites.sentAt)),
       db.select().from(rsvps),
@@ -31,6 +39,7 @@ export async function GET() {
           tableId: tableAssignments.tableId,
         })
         .from(tableAssignments),
+      getCampaignRunSummaries(['rsvp-reminder', 'thank-you', 'photo-share']),
     ])
 
     // Get attending RSVPs
@@ -101,6 +110,7 @@ export async function GET() {
       },
       mealCounts: mealCountsByCourse,
       seatingSummary: buildTableSeatingSummary(allTables, allTableAssignments),
+      campaignRuns,
     })
   } catch (error) {
     console.error('Error fetching reports:', error)
