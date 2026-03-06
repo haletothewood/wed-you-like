@@ -51,7 +51,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@oxlint/binding-darwin-arm64": "^1.51.0",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
