@@ -4,6 +4,7 @@ import { DrizzleEmailTemplateRepository } from '@/infrastructure/database/reposi
 import { DrizzleWeddingSettingsRepository } from '@/infrastructure/database/repositories/DrizzleWeddingSettingsRepository'
 import { ResendEmailService } from '@/infrastructure/email/ResendEmailService'
 import { SendInviteEmail } from '@/application/use-cases/SendInviteEmail'
+import { getCampaignBaseUrl } from '../../../campaigns/_shared'
 
 const inviteRepository = new DrizzleInviteRepository()
 const emailTemplateRepository = new DrizzleEmailTemplateRepository()
@@ -18,25 +19,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-
-    const configuredBaseUrl = process.env.BASE_URL?.trim()
-    let baseUrl: string
-
-    if (configuredBaseUrl) {
-      const parsed = new URL(configuredBaseUrl)
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        throw new Error('BASE_URL must use http or https')
-      }
-      baseUrl = parsed.origin
-    } else {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('BASE_URL must be configured in production')
-      }
-
-      const protocol = request.headers.get('x-forwarded-proto') || 'http'
-      const host = request.headers.get('host') || 'localhost:3000'
-      baseUrl = `${protocol}://${host}`
-    }
+    const baseUrl = getCampaignBaseUrl(request)
 
     const sendInviteEmail = new SendInviteEmail(
       inviteRepository,

@@ -41,6 +41,19 @@ interface ReportData {
     availableSeats: number
     isFull: boolean
   }>
+  campaignRuns: Partial<
+    Record<
+      'rsvp-reminder' | 'thank-you' | 'photo-share',
+      {
+        campaignKey: 'rsvp-reminder' | 'thank-you' | 'photo-share'
+        lastStatus: 'success' | 'partial' | 'failed'
+        lastAttemptAt: number
+        lastSuccessAt: number | null
+        lastSent: number
+        lastFailed: number
+      }
+    >
+  >
 }
 
 type CampaignKind = 'photo' | 'reminder' | 'thank-you'
@@ -141,6 +154,7 @@ export default function ReportsPage() {
       })
     } finally {
       setSendingPhotoCampaign(false)
+      await fetchReports()
     }
   }
 
@@ -171,6 +185,7 @@ export default function ReportsPage() {
       })
     } finally {
       setSendingReminderCampaign(false)
+      await fetchReports()
     }
   }
 
@@ -201,6 +216,7 @@ export default function ReportsPage() {
       })
     } finally {
       setSendingThankYouCampaign(false)
+      await fetchReports()
     }
   }
 
@@ -217,6 +233,47 @@ export default function ReportsPage() {
       title: 'Send photo share emails?',
       description: 'This sends day-of photo share emails to all invites that have an email address.',
     },
+  }
+
+  const campaignRunKeyByKind: Record<
+    CampaignKind,
+    'rsvp-reminder' | 'thank-you' | 'photo-share'
+  > = {
+    reminder: 'rsvp-reminder',
+    'thank-you': 'thank-you',
+    photo: 'photo-share',
+  }
+
+  const formatTimestamp = (seconds: number) => new Date(seconds * 1000).toLocaleString()
+
+  const renderCampaignRunSummary = (kind: CampaignKind) => {
+    const run = data?.campaignRuns[campaignRunKeyByKind[kind]]
+
+    if (!run) {
+      return <p className="text-sm text-muted-foreground">Last run: Never</p>
+    }
+
+    const statusLabel =
+      run.lastStatus === 'success'
+        ? 'Success'
+        : run.lastStatus === 'partial'
+          ? 'Partial'
+          : 'Failed'
+
+    return (
+      <div className="space-y-1 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span>Last run:</span>
+          <Badge variant={run.lastStatus === 'failed' ? 'destructive' : 'outline'}>
+            {statusLabel}
+          </Badge>
+          <span>{formatTimestamp(run.lastAttemptAt)}</span>
+        </div>
+        <p>
+          Last counts: sent {run.lastSent}, failed {run.lastFailed}
+        </p>
+      </div>
+    )
   }
 
   const handleConfirmCampaign = async () => {
@@ -524,6 +581,7 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-3">{renderCampaignRunSummary('reminder')}</div>
           <Button
             onClick={() => setPendingCampaign('reminder')}
             disabled={sendingReminderCampaign}
@@ -543,6 +601,7 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-3">{renderCampaignRunSummary('thank-you')}</div>
           <Button
             onClick={() => setPendingCampaign('thank-you')}
             disabled={sendingThankYouCampaign}
@@ -562,6 +621,7 @@ export default function ReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-3">{renderCampaignRunSummary('photo')}</div>
           <Button
             onClick={() => setPendingCampaign('photo')}
             disabled={sendingPhotoCampaign}
