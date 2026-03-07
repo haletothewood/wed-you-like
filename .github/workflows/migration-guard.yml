@@ -27,6 +27,7 @@ jobs:
           fi
 
       - name: Validate schema changes include migrations
+        id: migration_diff
         shell: bash
         run: |
           set -euo pipefail
@@ -38,6 +39,7 @@ jobs:
 
           SCHEMA_CHANGED=0
           MIGRATION_CHANGED=0
+          MIGRATION_FILESET_CHANGED=0
           JOURNAL_CHANGED=0
 
           if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/schema.ts$'; then
@@ -46,6 +48,17 @@ jobs:
 
           if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/migrations/.*\.sql$'; then
             MIGRATION_CHANGED=1
+          fi
+
+          if [[ "$MIGRATION_CHANGED" -eq 1 ]]; then
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+
+              if ! git cat-file -e "$BASE:$file" 2>/dev/null || ! git cat-file -e "HEAD:$file" 2>/dev/null; then
+                MIGRATION_FILESET_CHANGED=1
+                break
+              fi
+            done < <(echo "$CHANGED_FILES" | grep '^src/infrastructure/database/migrations/.*\.sql$' || true)
           fi
 
           if echo "$CHANGED_FILES" | grep -q '^src/infrastructure/database/migrations/meta/_journal.json$'; then
@@ -58,10 +71,39 @@ jobs:
             exit 1
           fi
 
-          if [[ "$MIGRATION_CHANGED" -eq 1 && "$JOURNAL_CHANGED" -eq 0 ]]; then
-            echo "::error::Migration SQL changed but migrations/meta/_journal.json was not updated."
+          if [[ "$MIGRATION_FILESET_CHANGED" -eq 1 && "$JOURNAL_CHANGED" -eq 0 ]]; then
+            echo "::error::Migration files were added or removed but migrations/meta/_journal.json was not updated."
             echo "Run: npm run db:generate and commit updated migration metadata."
             exit 1
           fi
 
+          if [[ "$SCHEMA_CHANGED" -eq 1 || "$MIGRATION_CHANGED" -eq 1 || "$JOURNAL_CHANGED" -eq 1 ]]; then
+            echo "needs_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "Migration guard passed."
+
+      - name: Setup Node for migration validation
+        if: steps.migration_diff.outputs.needs_validation == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies for migration validation
+        if: steps.migration_diff.outputs.needs_validation == 'true'
+        run: npm ci
+
+      - name: Validate LibSQL migration chunking
+        if: steps.migration_diff.outputs.needs_validation == 'true'
+        run: npm run db:validate-libsql-migrations
+
+      - name: Replay migrations with migration runner
+        if: steps.migration_diff.outputs.needs_validation == 'true'
+        env:
+          TURSO_DATABASE_URL: file:./tmp/migration-guard.sqlite.db
+        run: |
+          mkdir -p tmp
+          node scripts/migrate-libsql.mjs

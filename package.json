@@ -18,6 +18,7 @@
     "test:e2e:headed": "playwright test --headed",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:validate-libsql-migrations": "node scripts/validate-libsql-migrations.mjs",
     "db:studio": "drizzle-kit studio",
     "db:seed-admin": "tsx src/infrastructure/database/seed-admin.ts",
     "db:seed-wedding-settings": "tsx src/infrastructure/database/seed-wedding-settings.ts",
