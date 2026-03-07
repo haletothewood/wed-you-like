@@ -31,6 +31,7 @@ export interface InviteDetailsDTO {
     id: string
     name: string
     email: string
+    phone: string
     isPlusOne: boolean
     isChild: boolean
     parentGuestId?: string

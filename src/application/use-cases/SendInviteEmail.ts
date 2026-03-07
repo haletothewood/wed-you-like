@@ -3,6 +3,7 @@ import type { EmailTemplateRepository } from '@/domain/repositories/EmailTemplat
 import type { WeddingSettingsRepository } from '@/domain/repositories/WeddingSettingsRepository'
 import type { EmailService } from '@/domain/services/EmailService'
 import { TemplateRenderer } from '@/infrastructure/email/TemplateRenderer'
+import { findGuestWithEmail } from '@/application/invites/contactDetails'
 
 interface SendInviteEmailInput {
   inviteId: string
@@ -29,7 +30,7 @@ export class SendInviteEmail {
       throw new Error('Invite not found')
     }
 
-    const primaryGuest = invite.guests.find((g) => g.email && g.email.trim())
+    const primaryGuest = findGuestWithEmail(invite.guests)
     if (!primaryGuest) {
       throw new Error('Invite has no guest with an email address')
     }
@@ -78,7 +79,7 @@ export class SendInviteEmail {
       html: renderedHtml,
     })
 
-    invite.markAsSent()
+    invite.markAsSent('email')
     await this.inviteRepository.save(invite)
 
     return {

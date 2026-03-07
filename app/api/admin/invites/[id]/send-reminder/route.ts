@@ -5,6 +5,7 @@ import { rsvps } from '@/infrastructure/database/schema'
 import { DrizzleInviteRepository } from '@/infrastructure/database/repositories/DrizzleInviteRepository'
 import { DrizzleWeddingSettingsRepository } from '@/infrastructure/database/repositories/DrizzleWeddingSettingsRepository'
 import { ResendEmailService } from '@/infrastructure/email/ResendEmailService'
+import { findGuestWithEmail } from '@/application/invites/contactDetails'
 import { escapeHtml, getCampaignBaseUrl } from '../../../campaigns/_shared'
 
 const inviteRepository = new DrizzleInviteRepository()
@@ -41,7 +42,7 @@ export async function POST(
       )
     }
 
-    const primaryGuest = invite.guests.find((guest) => guest.email && guest.email.trim() !== '')
+    const primaryGuest = findGuestWithEmail(invite.guests)
     if (!primaryGuest) {
       return NextResponse.json(
         { error: 'Invite has no guest with an email address' },

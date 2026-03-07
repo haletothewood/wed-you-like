@@ -28,6 +28,7 @@ interface Guest {
   id: string
   name: string
   email: string
+  phone: string
   isPlusOne: boolean
   isChild: boolean
   parentGuestId?: string
@@ -43,6 +44,7 @@ interface Invite {
   plusOneAllowed: boolean
   guests: Guest[]
   sentAt: string | null
+  sentVia: 'email' | 'whatsapp' | null
   createdAt: string
   rsvpStatus: {
     hasResponded: boolean
@@ -113,6 +115,14 @@ interface BulkEmailRunSummary {
   results: BulkEmailRunResult[]
 }
 
+interface WhatsAppShareResponse {
+  success: boolean
+  mode: 'invite' | 'reminder'
+  markedSent: boolean
+  phone: string
+  shareUrl: string
+}
+
 const BULK_SKIP_REASON_LABELS: Record<BulkEmailSkipReason, string> = {
   invite_not_found: 'Invite not found',
   no_email: 'No email address',
@@ -129,6 +139,7 @@ export default function InvitesAdmin() {
   const [showForm, setShowForm] = useState(false)
   const [inviteType, setInviteType] = useState<'individual' | 'group' | 'bulk'>('individual')
   const [sending, setSending] = useState<string | null>(null)
+  const [sharingWhatsapp, setSharingWhatsapp] = useState<string | null>(null)
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{
     variant: 'default' | 'destructive'
@@ -149,6 +160,7 @@ export default function InvitesAdmin() {
   // Individual form state
   const [guestName, setGuestName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [plusOneAllowed, setPlusOneAllowed] = useState(false)
 
   // Group form state
@@ -158,13 +170,14 @@ export default function InvitesAdmin() {
       id: string
       name: string
       email: string
+      phone: string
       isChild: boolean
       parentGuestId?: string
       isInviteLead: boolean
     }>
   >([
-    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
-    { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
+    { id: crypto.randomUUID(), name: '', email: '', phone: '', isChild: false, isInviteLead: true },
+    { id: crypto.randomUUID(), name: '', email: '', phone: '', isChild: false, isInviteLead: false },
   ])
   const [bulkInput, setBulkInput] = useState('')
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
@@ -248,6 +261,7 @@ export default function InvitesAdmin() {
           type: 'individual',
           guestName,
           email,
+          phone,
           plusOneAllowed,
         }),
       })
@@ -255,6 +269,7 @@ export default function InvitesAdmin() {
       if (response.ok) {
         setGuestName('')
         setEmail('')
+        setPhone('')
         setPlusOneAllowed(false)
         setShowForm(false)
         fetchInvites()
@@ -280,8 +295,8 @@ export default function InvitesAdmin() {
       if (response.ok) {
         setGroupName('')
         setGroupGuests([
-          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: true },
-          { id: crypto.randomUUID(), name: '', email: '', isChild: false, isInviteLead: false },
+          { id: crypto.randomUUID(), name: '', email: '', phone: '', isChild: false, isInviteLead: true },
+          { id: crypto.randomUUID(), name: '', email: '', phone: '', isChild: false, isInviteLead: false },
         ])
         setShowForm(false)
         fetchInvites()
@@ -319,6 +334,7 @@ export default function InvitesAdmin() {
             type: 'individual',
             guestName: row.guestName,
             email: row.email,
+            phone: row.phone,
             plusOneAllowed: row.plusOneAllowed,
           }),
         })
@@ -417,6 +433,44 @@ export default function InvitesAdmin() {
     }
   }
 
+  const handleShareWhatsApp = async (inviteId: string) => {
+    setSharingWhatsapp(inviteId)
+    const shareWindow = window.open('', '_blank')
+
+    try {
+      const response = await fetch(`/api/admin/invites/${inviteId}/share-whatsapp`, {
+        method: 'POST',
+      })
+
+      const data = (await response.json()) as WhatsAppShareResponse | { error?: string }
+
+      if (!response.ok || !('shareUrl' in data)) {
+        shareWindow?.close()
+        showNotice(`Error: ${'error' in data ? data.error || 'Failed to prepare WhatsApp share' : 'Failed to prepare WhatsApp share'}`)
+        return
+      }
+
+      if (shareWindow) {
+        shareWindow.location.href = data.shareUrl
+      } else {
+        window.open(data.shareUrl, '_blank')
+      }
+
+      const actionLabel = data.mode === 'reminder' ? 'WhatsApp reminder' : 'WhatsApp invite'
+      showNotice(`${actionLabel} opened for ${data.phone}.`, 'default', 3000)
+
+      if (data.markedSent) {
+        await fetchInvites()
+      }
+    } catch (error) {
+      shareWindow?.close()
+      console.error('Error sharing WhatsApp invite:', error)
+      showNotice('Failed to open WhatsApp share')
+    } finally {
+      setSharingWhatsapp(null)
+    }
+  }
+
   const handleCopyRsvpLink = async (inviteId: string, token: string) => {
     const rsvpPath = `/rsvp/${token}`
     const rsvpUrl = new URL(rsvpPath, window.location.origin).toString()
@@ -485,7 +539,7 @@ export default function InvitesAdmin() {
 
   const updateGroupGuest = (
     index: number,
-    field: 'name' | 'email' | 'parentGuestId',
+    field: 'name' | 'email' | 'phone' | 'parentGuestId',
     value: string
   ) => {
     const updated = [...groupGuests]
@@ -503,6 +557,7 @@ export default function InvitesAdmin() {
         id: crypto.randomUUID(),
         name: '',
         email: '',
+        phone: '',
         isChild: false,
         isInviteLead: prev.every((g) => !g.isInviteLead),
       },
@@ -517,6 +572,7 @@ export default function InvitesAdmin() {
         id: crypto.randomUUID(),
         name: '',
         email: '',
+        phone: '',
         isChild: true,
         parentGuestId: eligibleParents[0]?.id,
         isInviteLead: false,
@@ -571,10 +627,12 @@ export default function InvitesAdmin() {
       if (normalizedQuery) {
         const guestNames = invite.guests.map((g) => g.name).join(' ')
         const guestEmails = invite.guests.map((g) => g.email).join(' ')
+        const guestPhones = invite.guests.map((g) => g.phone).join(' ')
         const searchable = [
           invite.groupName || '',
           guestNames,
           guestEmails,
+          guestPhones,
           invite.token,
         ]
           .join(' ')
@@ -890,16 +948,27 @@ export default function InvitesAdmin() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone / WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+447700900123"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Add at least one contact method: email or phone.
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -993,7 +1062,7 @@ export default function InvitesAdmin() {
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <Input
                           placeholder={`Guest ${idx + 1} Name`}
                           value={guest.name}
@@ -1005,6 +1074,12 @@ export default function InvitesAdmin() {
                           placeholder={`Guest ${idx + 1} Email`}
                           value={guest.email}
                           onChange={(e) => updateGroupGuest(idx, 'email', e.target.value)}
+                        />
+                        <Input
+                          type="tel"
+                          placeholder={`Guest ${idx + 1} Phone`}
+                          value={guest.phone}
+                          onChange={(e) => updateGroupGuest(idx, 'phone', e.target.value)}
                         />
                       </div>
 
@@ -1072,11 +1147,11 @@ export default function InvitesAdmin() {
                       setBulkSummary(null)
                     }}
                     rows={10}
-                    placeholder={`name,email,plusOneAllowed\nAlex Smith,alex@example.com,yes\nJamie Lee,jamie@example.com,no`}
+                    placeholder={`name,email,phone,plusOneAllowed\nAlex Smith,alex@example.com,,yes\nJamie Lee,,+447700900123,no`}
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Format: name, email, plusOneAllowed (optional). Accepted plus-one values: yes/no, true/false, 1/0.
+                    Format: name, email, phone, plusOneAllowed (optional). Add either email or phone for each row. Accepted plus-one values: yes/no, true/false, 1/0.
                   </p>
                 </div>
 
@@ -1143,6 +1218,7 @@ export default function InvitesAdmin() {
                             <TableHead>Line</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
                             <TableHead>Plus One</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1152,6 +1228,7 @@ export default function InvitesAdmin() {
                               <TableCell>{row.lineNumber}</TableCell>
                               <TableCell>{row.guestName}</TableCell>
                               <TableCell>{row.email}</TableCell>
+                              <TableCell>{row.phone || '-'}</TableCell>
                               <TableCell>{row.plusOneAllowed ? 'Yes' : 'No'}</TableCell>
                             </TableRow>
                           ))}
@@ -1210,14 +1287,14 @@ export default function InvitesAdmin() {
                 <Label htmlFor="invite-search" className="text-xs">Search</Label>
                 <Input
                   id="invite-search"
-                  placeholder="Group, guest name, email, token..."
+                  placeholder="Group, guest name, email, phone, token..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
               <div>
-                <Label htmlFor="sent-filter" className="text-xs">Email</Label>
+                <Label htmlFor="sent-filter" className="text-xs">Invite Status</Label>
                 <select
                   id="sent-filter"
                   className="w-full h-9 rounded-md border bg-background px-3 text-sm"
@@ -1466,7 +1543,7 @@ export default function InvitesAdmin() {
                   <TableHead>Name/Group</TableHead>
                   <TableHead>Guests</TableHead>
                   <TableHead>Count</TableHead>
-                  <TableHead>Email Status</TableHead>
+                  <TableHead>Invite Status</TableHead>
                   <TableHead>RSVP Response</TableHead>
                   <TableHead>Attending</TableHead>
                   <TableHead>Completeness</TableHead>
@@ -1475,8 +1552,8 @@ export default function InvitesAdmin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvites.map((invite) => (
-                  <TableRow key={invite.id}>
+	                {filteredInvites.map((invite) => (
+	                  <TableRow key={invite.id}>
                     <TableCell>
                       <Checkbox
                         checked={selectedInviteIds.has(invite.id)}
@@ -1492,35 +1569,46 @@ export default function InvitesAdmin() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm space-y-1">
-                        {invite.guests.map((g) => (
-                          <div key={g.id} className="flex items-center gap-2">
-                            <span>{g.name}</span>
-                            {g.isChild && <Badge variant="secondary" className="text-[10px]">Child</Badge>}
-                            {!g.isChild && g.isInviteLead && (
-                              <Badge variant="outline" className="text-[10px]">Lead</Badge>
-                            )}
-                            {g.isPlusOne && (
-                              <Badge variant="secondary" className="text-[10px]">Plus-one</Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
+	                    <TableCell>
+	                      <div className="text-sm space-y-1">
+	                        {invite.guests.map((g) => (
+	                          <div key={g.id} className="space-y-1">
+	                            <div className="flex items-center gap-2">
+	                              <span>{g.name}</span>
+	                              {g.isChild && <Badge variant="secondary" className="text-[10px]">Child</Badge>}
+	                              {!g.isChild && g.isInviteLead && (
+	                                <Badge variant="outline" className="text-[10px]">Lead</Badge>
+	                              )}
+	                              {g.isPlusOne && (
+	                                <Badge variant="secondary" className="text-[10px]">Plus-one</Badge>
+	                              )}
+	                            </div>
+	                            {(g.email || g.phone) && (
+	                              <div className="text-xs text-muted-foreground">
+	                                {g.email || 'No email'}
+	                                {g.email && g.phone ? ' · ' : ''}
+	                                {g.phone || (g.email ? '' : 'No phone')}
+	                              </div>
+	                            )}
+	                          </div>
+	                        ))}
+	                      </div>
+	                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {invite.adultsCount}A {invite.childrenCount}C
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {invite.sentAt ? (
-                        <Badge className="bg-success text-success-foreground">
-                          Sent
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Not Sent</Badge>
-                      )}
+	                    <TableCell>
+	                      {invite.sentAt ? (
+	                        <div className="space-y-1">
+	                          <Badge className="bg-success text-success-foreground">
+	                            {invite.sentVia === 'whatsapp' ? 'Sent via WhatsApp' : 'Sent via Email'}
+	                          </Badge>
+	                        </div>
+	                      ) : (
+	                        <Badge variant="secondary">Not Sent</Badge>
+	                      )}
                     </TableCell>
                     <TableCell>
                       {invite.rsvpStatus.hasResponded ? (
@@ -1598,15 +1686,35 @@ export default function InvitesAdmin() {
                         </Button>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={sending === invite.id}
-                          onClick={() => handleSendEmail(invite.id)}
-                        >
-                          {sending === invite.id ? 'Sending...' : 'Send Email'}
+	                    <TableCell className="text-right">
+	                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end">
+	                        <Button
+	                          size="sm"
+	                          variant="outline"
+	                          disabled={
+	                            sharingWhatsapp === invite.id ||
+	                            !invite.guests.some((guest) => guest.phone.trim() !== '')
+	                          }
+	                          onClick={() => handleShareWhatsApp(invite.id)}
+	                        >
+	                          {sharingWhatsapp === invite.id
+	                            ? 'Opening...'
+	                            : !invite.sentAt
+	                              ? 'WhatsApp Invite'
+	                              : invite.rsvpStatus.hasResponded
+	                                ? 'WhatsApp Link'
+	                                : 'WhatsApp Reminder'}
+	                        </Button>
+	                        <Button
+	                          size="sm"
+	                          variant="outline"
+	                          disabled={
+	                            sending === invite.id ||
+	                            !invite.guests.some((guest) => guest.email.trim() !== '')
+	                          }
+	                          onClick={() => handleSendEmail(invite.id)}
+	                        >
+	                          {sending === invite.id ? 'Sending...' : 'Send Email'}
                         </Button>
                         <Button
                           size="sm"

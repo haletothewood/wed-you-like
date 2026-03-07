@@ -4,11 +4,14 @@ export interface Guest {
   id: string
   name: string
   email: string
+  phone: string
   isPlusOne: boolean
   isChild: boolean
   parentGuestId?: string
   isInviteLead: boolean
 }
+
+export type InviteSentVia = 'email' | 'whatsapp'
 
 export interface InviteProps {
   id: string
@@ -19,6 +22,7 @@ export interface InviteProps {
   plusOneAllowed: boolean
   guests: Guest[]
   sentAt: Date | null
+  sentVia: InviteSentVia | null
   createdAt: Date
   updatedAt: Date
 }
@@ -58,6 +62,10 @@ export class Invite {
     return this.props.sentAt
   }
 
+  get sentVia(): InviteSentVia | null {
+    return this.props.sentVia
+  }
+
   get createdAt(): Date {
     return this.props.createdAt
   }
@@ -68,11 +76,23 @@ export class Invite {
 
   static createIndividual(params: {
     guestName: string
-    email: string
+    email?: string
+    phone?: string
     plusOneAllowed?: boolean
   }): Invite {
     Invite.validateGuestName(params.guestName)
-    Invite.validateEmail(params.email)
+    Invite.validateContactMethods(params.email, params.phone)
+
+    const email = params.email?.trim() || ''
+    const phone = params.phone?.trim() || ''
+
+    if (email) {
+      Invite.validateEmail(email)
+    }
+
+    if (phone) {
+      Invite.validatePhone(phone)
+    }
 
     const now = new Date()
     const guestId = nanoid()
@@ -88,7 +108,8 @@ export class Invite {
         {
           id: guestId,
           name: params.guestName,
-          email: params.email,
+          email,
+          phone,
           isPlusOne: false,
           isChild: false,
           parentGuestId: undefined,
@@ -96,6 +117,7 @@ export class Invite {
         },
       ],
       sentAt: null,
+      sentVia: null,
       createdAt: now,
       updatedAt: now,
     })
@@ -107,6 +129,7 @@ export class Invite {
       id: string
       name: string
       email: string
+      phone?: string
       isChild: boolean
       parentGuestId?: string
       isInviteLead?: boolean
@@ -120,11 +143,13 @@ export class Invite {
       throw new Error('Group invite requires at least two guests')
     }
 
-    const hasEmailGuest = params.guests.some(
-      (g) => g.email && g.email.trim() !== ''
+    const hasContactGuest = params.guests.some(
+      (g) =>
+        (g.email && g.email.trim() !== '') ||
+        (g.phone && g.phone.trim() !== '')
     )
-    if (!hasEmailGuest) {
-      throw new Error('At least one guest must have an email address')
+    if (!hasContactGuest) {
+      throw new Error('At least one guest must have an email address or phone number')
     }
 
     const guestIds = new Set(params.guests.map((g) => g.id))
@@ -143,6 +168,9 @@ export class Invite {
       Invite.validateGuestName(guest.name)
       if (guest.email && guest.email.trim() !== '') {
         Invite.validateEmail(guest.email)
+      }
+      if (guest.phone && guest.phone.trim() !== '') {
+        Invite.validatePhone(guest.phone)
       }
 
       if (!guest.isChild && guest.parentGuestId) {
@@ -193,12 +221,14 @@ export class Invite {
         id: g.id,
         name: g.name,
         email: g.email,
+        phone: g.phone?.trim() || '',
         isPlusOne: false,
         isChild: g.isChild,
         parentGuestId: g.parentGuestId,
         isInviteLead: leadCount === 0 ? g.id === firstAdultId : Boolean(g.isInviteLead),
       })),
       sentAt: null,
+      sentVia: null,
       createdAt: now,
       updatedAt: now,
     })
@@ -211,18 +241,28 @@ export class Invite {
   }
 
   private static validateEmail(email: string): void {
-    if (!email || email.trim() === '') {
-      throw new Error('Email is required')
-    }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       throw new Error('Invalid email format')
     }
   }
 
-  markAsSent(): void {
+  private static validatePhone(phone: string): void {
+    const phoneRegex = /^\+?[0-9\s().-]{8,20}$/
+    if (!phoneRegex.test(phone)) {
+      throw new Error('Invalid phone format')
+    }
+  }
+
+  private static validateContactMethods(email?: string, phone?: string): void {
+    if ((!email || email.trim() === '') && (!phone || phone.trim() === '')) {
+      throw new Error('At least one contact method is required')
+    }
+  }
+
+  markAsSent(via: InviteSentVia): void {
     this.props.sentAt = new Date()
+    this.props.sentVia = via
     this.props.updatedAt = new Date()
   }
 }

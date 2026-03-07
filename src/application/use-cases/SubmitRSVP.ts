@@ -90,6 +90,7 @@ export class SubmitRSVP {
             id: nanoid(),
             name: request.plusOneName!.trim(),
             email: '',
+            phone: '',
             inviteId: invite.id,
             isPlusOne: true,
             isChild: false,

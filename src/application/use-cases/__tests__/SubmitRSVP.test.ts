@@ -17,8 +17,19 @@ const createMockInvite = (overrides: Partial<Invite> = {}): Invite =>
     adultsCount: 1,
     childrenCount: 0,
     plusOneAllowed: false,
-    guests: [{ id: 'guest-1', name: 'John Smith', email: 'john@example.com' }],
+    guests: [
+      {
+        id: 'guest-1',
+        name: 'John Smith',
+        email: 'john@example.com',
+        phone: '',
+        isPlusOne: false,
+        isChild: false,
+        isInviteLead: true,
+      },
+    ],
     sentAt: null,
+    sentVia: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -146,8 +157,11 @@ describe('SubmitRSVP', () => {
         id: 'plus-one-guest-1',
         name: 'Old Name',
         email: '',
+        phone: '',
         inviteId: 'invite-1',
         isPlusOne: true,
+        isChild: false,
+        isInviteLead: false,
       }
 
       vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
@@ -177,8 +191,11 @@ describe('SubmitRSVP', () => {
         id: 'plus-one-guest-1',
         name: 'Jane Doe',
         email: '',
+        phone: '',
         inviteId: 'invite-1',
         isPlusOne: true,
+        isChild: false,
+        isInviteLead: false,
       }
 
       vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
@@ -317,8 +334,8 @@ describe('SubmitRSVP', () => {
     it('should clear meals and question responses when RSVP changes to not attending', async () => {
       const invite = createMockInvite({
         guests: [
-          { id: 'guest-1', name: 'John Smith', email: 'john@example.com' },
-          { id: 'guest-2', name: 'Jane Smith', email: 'jane@example.com' },
+          { id: 'guest-1', name: 'John Smith', email: 'john@example.com', phone: '', isPlusOne: false, isChild: false, isInviteLead: true },
+          { id: 'guest-2', name: 'Jane Smith', email: 'jane@example.com', phone: '', isPlusOne: false, isChild: false, isInviteLead: false },
         ],
       })
       const existingRsvp = {
@@ -332,6 +349,7 @@ describe('SubmitRSVP', () => {
         id: 'plus-one-guest-1',
         name: 'Plus One',
         email: '',
+        phone: '',
         inviteId: 'invite-1',
         isPlusOne: true,
         isChild: false,

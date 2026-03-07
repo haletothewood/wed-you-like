@@ -5,6 +5,7 @@ export const guests = sqliteTable('guests', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull(),
+  phone: text('phone').notNull().default(''),
   inviteId: text('invite_id')
     .notNull()
     .references(() => invites.id, { onDelete: 'cascade' }),
@@ -32,6 +33,7 @@ export const invites = sqliteTable('invites', {
     .notNull()
     .default(false),
   sentAt: integer('sent_at', { mode: 'timestamp' }),
+  sentVia: text('sent_via', { enum: ['email', 'whatsapp'] }),
   thankYouSentAt: integer('thank_you_sent_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

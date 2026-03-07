@@ -5,8 +5,8 @@ import { loginAsAdmin } from './helpers'
 const extractTokenFromRow = async (page: Page, rowText: string): Promise<string> => {
   const row = page.locator('tr', { hasText: rowText }).first()
   await expect(row).toBeVisible()
-  const rsvpCodeText = await row.locator('code').innerText()
-  const token = rsvpCodeText.replace('/rsvp/', '').trim()
+  const rsvpLinkText = await row.locator('a[href*="/rsvp/"]').innerText()
+  const token = rsvpLinkText.replace('/rsvp/', '').trim()
   expect(token.length).toBeGreaterThan(10)
   return token
 }
@@ -48,7 +48,7 @@ test('RSVP excludes stale meal selections for deselected guests', async ({ page 
 
   await page.getByLabel('Parent Adult').click()
   await page.getByRole('button', { name: 'Submit RSVP' }).click()
-  await expect(page.getByText('Thank You!')).toBeVisible()
+  await expect(page.getByText("Thanks, you're all set")).toBeVisible()
 
   await page.goto('/admin/reports')
   const downloadPromise = page.waitForEvent('download')
@@ -58,9 +58,9 @@ test('RSVP excludes stale meal selections for deselected guests', async ({ page 
   expect(filePath).not.toBeNull()
   const csv = await readFile(filePath as string, 'utf8')
 
-  expect(csv).toContain(`"Lead Adult","Unassigned","${starterName}","",""`)
-  expect(csv).toContain('"Parent Adult","Unassigned","","",""')
-  expect(csv).not.toContain(`"Parent Adult","Unassigned","${starterName}"`)
+  expect(csv).toContain(`"Lead Adult","Adult","Unassigned","${starterName}","",""`)
+  expect(csv).toContain('"Parent Adult","Adult","Unassigned","","",""')
+  expect(csv).not.toContain(`"Parent Adult","Adult","Unassigned","${starterName}"`)
 })
 
 test('required question validation clears while editing text and single-choice answers', async ({ page }) => {
@@ -125,7 +125,7 @@ test('required question validation clears while editing text and single-choice a
   await expect(page.getByText(singleError)).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Submit RSVP' }).click()
-  await expect(page.getByText('Thank You!')).toBeVisible()
+  await expect(page.getByText("Thanks, you're all set")).toBeVisible()
 })
 
 test('export reports shows an error and does not download on API failure', async ({ page }) => {
@@ -144,13 +144,10 @@ test('export reports shows an error and does not download on API failure', async
     .waitForEvent('download', { timeout: 1500 })
     .then(() => true)
     .catch(() => false)
-  const dialogPromise = page.waitForEvent('dialog')
 
   await page.getByRole('button', { name: /Export Venue Report/ }).click()
 
-  const dialog = await dialogPromise
-  expect(dialog.message()).toBe('Failed to export data')
-  await dialog.accept()
-
+  await expect(page.getByText('Export failed')).toBeVisible()
+  await expect(page.getByText('Forced export failure')).toBeVisible()
   expect(await downloadPromise).toBe(false)
 })

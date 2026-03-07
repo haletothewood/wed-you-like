@@ -17,6 +17,7 @@ export class DrizzleInviteRepository implements InviteRepository {
         childrenCount: invite.childrenCount,
         plusOneAllowed: invite.plusOneAllowed,
         sentAt: invite.sentAt,
+        sentVia: invite.sentVia,
         createdAt: invite.createdAt,
         updatedAt: invite.updatedAt,
       })
@@ -28,6 +29,7 @@ export class DrizzleInviteRepository implements InviteRepository {
           childrenCount: invite.childrenCount,
           plusOneAllowed: invite.plusOneAllowed,
           sentAt: invite.sentAt,
+          sentVia: invite.sentVia,
           updatedAt: invite.updatedAt,
         },
       })
@@ -42,7 +44,8 @@ export class DrizzleInviteRepository implements InviteRepository {
         invite.guests.map((guest) => ({
           id: guest.id,
           name: guest.name,
-          email: guest.email,
+          email: guest.email || '',
+          phone: guest.phone || '',
           inviteId: invite.id,
           isPlusOne: guest.isPlusOne,
           isChild: guest.isChild,
@@ -124,12 +127,14 @@ export class DrizzleInviteRepository implements InviteRepository {
     childrenCount: number
     plusOneAllowed: boolean
     sentAt: Date | null
+    sentVia: 'email' | 'whatsapp' | null
     createdAt: Date
     updatedAt: Date
     guests?: Array<{
       id: string
       name: string
       email: string
+      phone: string
       isPlusOne?: boolean | null
       isChild?: boolean | null
       parentGuestId?: string | null
@@ -141,6 +146,7 @@ export class DrizzleInviteRepository implements InviteRepository {
         id: g.id,
         name: g.name,
         email: g.email,
+        phone: g.phone || '',
         isPlusOne: Boolean(g.isPlusOne),
         isChild: Boolean(g.isChild),
         parentGuestId: g.parentGuestId || undefined,
@@ -159,6 +165,7 @@ export class DrizzleInviteRepository implements InviteRepository {
       plusOneAllowed: Boolean(record.plusOneAllowed),
       guests: guestsList,
       sentAt: record.sentAt,
+      sentVia: record.sentVia,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     }
