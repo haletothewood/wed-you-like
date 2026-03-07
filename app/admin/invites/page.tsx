@@ -435,7 +435,6 @@ export default function InvitesAdmin() {
 
   const handleShareWhatsApp = async (inviteId: string) => {
     setSharingWhatsapp(inviteId)
-    const shareWindow = window.open('', '_blank')
 
     try {
       const response = await fetch(`/api/admin/invites/${inviteId}/share-whatsapp`, {
@@ -445,25 +444,16 @@ export default function InvitesAdmin() {
       const data = (await response.json()) as WhatsAppShareResponse | { error?: string }
 
       if (!response.ok || !('shareUrl' in data)) {
-        shareWindow?.close()
         showNotice(`Error: ${'error' in data ? data.error || 'Failed to prepare WhatsApp share' : 'Failed to prepare WhatsApp share'}`)
         return
       }
 
-      if (shareWindow) {
-        shareWindow.location.href = data.shareUrl
-      } else {
-        window.open(data.shareUrl, '_blank')
-      }
-
-      const actionLabel = data.mode === 'reminder' ? 'WhatsApp reminder' : 'WhatsApp invite'
-      showNotice(`${actionLabel} opened for ${data.phone}.`, 'default', 3000)
-
       if (data.markedSent) {
         await fetchInvites()
       }
+
+      window.location.assign(data.shareUrl)
     } catch (error) {
-      shareWindow?.close()
       console.error('Error sharing WhatsApp invite:', error)
       showNotice('Failed to open WhatsApp share')
     } finally {
