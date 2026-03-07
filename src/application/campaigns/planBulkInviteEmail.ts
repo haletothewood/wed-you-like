@@ -1,3 +1,5 @@
+import { findGuestWithEmail } from '@/application/invites/contactDetails'
+
 export type BulkEmailMode = 'invite' | 'reminder'
 
 export type BulkEmailSkipReason =
@@ -70,7 +72,7 @@ export const planBulkInviteEmail = ({
     }
 
     const label = invite.groupName || invite.guests[0]?.name || invite.id
-    const primaryGuest = invite.guests.find((guest) => guest.email && guest.email.trim() !== '')
+    const primaryGuest = findGuestWithEmail(invite.guests)
 
     if (!primaryGuest) {
       skipped++

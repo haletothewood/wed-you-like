@@ -1,22 +1,50 @@
 import { z } from 'zod'
 
 export const emailSchema = z.string().email('Invalid email format').min(1, 'Email is required')
+const phonePattern = /^\+?[0-9\s().-]{8,20}$/
+const optionalEmailSchema = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || emailSchema.safeParse(value).success, 'Invalid email format')
+const optionalPhoneSchema = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || phonePattern.test(value), 'Invalid phone format')
 
 const guestSchema = z.object({
   id: z.string().min(1, 'Guest ID is required'),
   name: z.string().min(1, 'Guest name is required'),
-  email: z.string(),
+  email: optionalEmailSchema.default(''),
+  phone: optionalPhoneSchema.default(''),
   isChild: z.boolean().default(false),
   parentGuestId: z.string().optional(),
   isInviteLead: z.boolean().optional(),
 })
 
-export const createIndividualInviteSchema = z.object({
+const baseIndividualInviteSchema = z.object({
   type: z.literal('individual'),
   guestName: z.string().min(1, 'Guest name is required'),
-  email: emailSchema,
+  email: optionalEmailSchema.default(''),
+  phone: optionalPhoneSchema.default(''),
   plusOneAllowed: z.boolean().default(false),
 })
+
+const validateIndividualInviteData = (
+  data: z.infer<typeof baseIndividualInviteSchema>,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.email && !data.phone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either an email address or phone number is required',
+      path: ['email'],
+    })
+  }
+}
+
+export const createIndividualInviteSchema = baseIndividualInviteSchema.superRefine(
+  validateIndividualInviteData
+)
 
 const baseGroupInviteSchema = z.object({
   type: z.literal('group'),
@@ -28,11 +56,13 @@ const validateGroupInviteData = (
   data: z.infer<typeof baseGroupInviteSchema>,
   ctx: z.RefinementCtx
 ) => {
-  const hasEmail = data.guests.some((g) => g.email && g.email.trim() !== '')
-  if (!hasEmail) {
+  const hasContactMethod = data.guests.some(
+    (g) => (g.email && g.email.trim() !== '') || (g.phone && g.phone.trim() !== '')
+  )
+  if (!hasContactMethod) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'At least one guest must have an email address',
+      message: 'At least one guest must have an email address or phone number',
       path: ['guests'],
     })
   }
@@ -120,9 +150,11 @@ export const createGroupInviteSchema = baseGroupInviteSchema.superRefine(
 )
 
 export const createInviteSchema = z
-  .discriminatedUnion('type', [createIndividualInviteSchema, baseGroupInviteSchema])
+  .discriminatedUnion('type', [baseIndividualInviteSchema, baseGroupInviteSchema])
   .superRefine((data, ctx) => {
-    if (data.type === 'group') {
+    if (data.type === 'individual') {
+      validateIndividualInviteData(data, ctx)
+    } else {
       validateGroupInviteData(data, ctx)
     }
   })

@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       const result = await createInvite.execute({
         guestName: data.guestName,
         email: data.email,
+        phone: data.phone,
         plusOneAllowed: data.plusOneAllowed,
       })
 
@@ -63,9 +64,9 @@ export async function POST(request: Request) {
     } else {
       const createGroupInvite = new CreateGroupInvite(inviteRepository)
       const result = await createGroupInvite.execute({
-        groupName: data.groupName,
-        guests: data.guests,
-      })
+          groupName: data.groupName,
+          guests: data.guests,
+        })
 
       return NextResponse.json(result, { status: 201 })
     }

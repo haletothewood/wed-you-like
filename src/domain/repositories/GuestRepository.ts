@@ -2,6 +2,7 @@ export interface GuestData {
   id: string
   name: string
   email: string
+  phone: string
   inviteId: string
   isPlusOne: boolean
   isChild: boolean

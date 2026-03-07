@@ -1,3 +1,5 @@
+import { findGuestWithEmail } from '@/application/invites/contactDetails'
+
 export interface ThankYouCampaignGuest {
   name: string
   email: string
@@ -59,7 +61,7 @@ export const planThankYouCampaign = ({
       continue
     }
 
-    const primaryGuest = invite.guests.find((guest) => guest.email && guest.email.trim() !== '')
+    const primaryGuest = findGuestWithEmail(invite.guests)
     if (!primaryGuest) {
       skippedNoEmail++
       continue

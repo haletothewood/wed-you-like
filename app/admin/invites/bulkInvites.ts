@@ -2,12 +2,14 @@ export interface BulkInviteRow {
   lineNumber: number
   guestName: string
   email: string
+  phone: string
   plusOneAllowed: boolean
   rawPlusOne: string
   errors: string[]
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_PATTERN = /^\+?[0-9\s().-]{8,20}$/
 
 const parsePlusOneValue = (
   value: string
@@ -81,19 +83,23 @@ export const parseBulkInviteInput = (input: string): BulkInviteRow[] => {
     const columns = parseDelimitedLine(line, delimiter).map((column) => column.trim())
     const guestName = columns[0] || ''
     const email = columns[1] || ''
-    const rawPlusOne = columns[2] || ''
+    const hasExplicitPhoneColumn = columns.length >= 4
+    const phone = hasExplicitPhoneColumn ? columns[2] || '' : ''
+    const rawPlusOne = hasExplicitPhoneColumn ? columns[3] || '' : columns[2] || ''
     const plusOneParsed = parsePlusOneValue(rawPlusOne)
     const errors: string[] = []
 
     if (!guestName) errors.push('Missing guest name')
-    if (!email) errors.push('Missing email')
+    if (!email && !phone) errors.push('Missing email or phone')
     if (email && !EMAIL_PATTERN.test(email)) errors.push('Invalid email')
+    if (phone && !PHONE_PATTERN.test(phone)) errors.push('Invalid phone')
     if (!plusOneParsed.valid) errors.push('Plus one must be yes/no, true/false, 1/0')
 
     return {
       lineNumber,
       guestName,
       email,
+      phone,
       plusOneAllowed: plusOneParsed.value,
       rawPlusOne,
       errors,
@@ -116,8 +122,8 @@ export const parseBulkInviteInput = (input: string): BulkInviteRow[] => {
   })
 }
 
-export const BULK_TEMPLATE_CSV = `name,email,plusOneAllowed
-Alex Smith,alex@example.com,yes
-Jamie Lee,jamie@example.com,no
-Taylor Morgan,taylor@example.com,true
+export const BULK_TEMPLATE_CSV = `name,email,phone,plusOneAllowed
+Alex Smith,alex@example.com,,yes
+Jamie Lee,,+447700900123,no
+Taylor Morgan,taylor@example.com,,true
 `

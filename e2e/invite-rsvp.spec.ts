@@ -37,8 +37,8 @@ test('admin can create a group invite and guest can RSVP from token link', async
   const row = page.locator('tr', { hasText: 'Playwright Family' }).first()
   await expect(row).toBeVisible()
 
-  const rsvpCodeText = await row.locator('code').innerText()
-  const token = rsvpCodeText.replace('/rsvp/', '').trim()
+  const rsvpLinkText = await row.locator('a[href*="/rsvp/"]').innerText()
+  const token = rsvpLinkText.replace('/rsvp/', '').trim()
   expect(token.length).toBeGreaterThan(10)
 
   await page.goto(`/rsvp/${token}`)
@@ -54,7 +54,7 @@ test('admin can create a group invite and guest can RSVP from token link', async
 
   await page.getByRole('button', { name: 'Submit RSVP' }).click()
 
-  await expect(page.getByText('Thank You!')).toBeVisible()
+  await expect(page.getByText("Thanks, you're all set")).toBeVisible()
 
   await page.goto(`/rsvp/${token}`)
   await expect(page.getByText('You have already responded to this invitation.')).toBeVisible()

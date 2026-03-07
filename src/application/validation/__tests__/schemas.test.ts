@@ -31,6 +31,7 @@ describe('Validation Schemas', () => {
         type: 'individual',
         guestName: 'John Smith',
         email: 'john@example.com',
+        phone: '',
         plusOneAllowed: false,
       })
       expect(result.success).toBe(true)
@@ -41,6 +42,7 @@ describe('Validation Schemas', () => {
         type: 'individual',
         guestName: 'John Smith',
         email: 'john@example.com',
+        phone: '',
       })
       expect(result.success).toBe(true)
       if (result.success) {
@@ -48,11 +50,22 @@ describe('Validation Schemas', () => {
       }
     })
 
+    it('should accept a phone-only individual invite', () => {
+      const result = createIndividualInviteSchema.safeParse({
+        type: 'individual',
+        guestName: 'John Smith',
+        email: '',
+        phone: '+447700900123',
+      })
+      expect(result.success).toBe(true)
+    })
+
     it('should reject empty guest name', () => {
       const result = createIndividualInviteSchema.safeParse({
         type: 'individual',
         guestName: '',
         email: 'john@example.com',
+        phone: '',
       })
       expect(result.success).toBe(false)
     })
@@ -62,6 +75,17 @@ describe('Validation Schemas', () => {
         type: 'individual',
         guestName: 'John Smith',
         email: 'not-an-email',
+        phone: '',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('should reject when no contact method is provided', () => {
+      const result = createIndividualInviteSchema.safeParse({
+        type: 'individual',
+        guestName: 'John Smith',
+        email: '',
+        phone: '',
       })
       expect(result.success).toBe(false)
     })
@@ -71,6 +95,7 @@ describe('Validation Schemas', () => {
         type: 'group',
         guestName: 'John Smith',
         email: 'john@example.com',
+        phone: '',
       })
       expect(result.success).toBe(false)
     })
@@ -82,9 +107,9 @@ describe('Validation Schemas', () => {
         type: 'group',
         groupName: 'The Smiths',
         guests: [
-          { id: 'adult-1', name: 'John Smith', email: 'john@example.com', isChild: false, isInviteLead: true },
-          { id: 'adult-2', name: 'Jane Smith', email: '', isChild: false },
-          { id: 'child-1', name: 'Billy Smith', email: '', isChild: true, parentGuestId: 'adult-2' },
+          { id: 'adult-1', name: 'John Smith', email: 'john@example.com', phone: '', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane Smith', email: '', phone: '', isChild: false },
+          { id: 'child-1', name: 'Billy Smith', email: '', phone: '', isChild: true, parentGuestId: 'adult-2' },
         ],
       })
       expect(result.success).toBe(true)
@@ -95,8 +120,8 @@ describe('Validation Schemas', () => {
         type: 'group',
         groupName: 'The Smiths',
         guests: [
-          { id: 'dup', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
-          { id: 'dup', name: 'Jane', email: '', isChild: false },
+          { id: 'dup', name: 'John', email: 'john@example.com', phone: '', isChild: false, isInviteLead: true },
+          { id: 'dup', name: 'Jane', email: '', phone: '', isChild: false },
         ],
       })
       expect(result.success).toBe(false)
@@ -107,8 +132,8 @@ describe('Validation Schemas', () => {
         type: 'group',
         groupName: '',
         guests: [
-          { id: 'adult-1', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
-          { id: 'adult-2', name: 'Jane', email: '', isChild: false },
+          { id: 'adult-1', name: 'John', email: 'john@example.com', phone: '', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane', email: '', phone: '', isChild: false },
         ],
       })
       expect(result.success).toBe(false)
@@ -123,13 +148,13 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(false)
     })
 
-    it('should require at least one guest with email', () => {
+    it('should require at least one guest with email or phone', () => {
       const result = createGroupInviteSchema.safeParse({
         type: 'group',
         groupName: 'The Smiths',
         guests: [
-          { id: 'adult-1', name: 'John', email: '', isChild: false, isInviteLead: true },
-          { id: 'adult-2', name: 'Jane', email: '', isChild: false },
+          { id: 'adult-1', name: 'John', email: '', phone: '', isChild: false, isInviteLead: true },
+          { id: 'adult-2', name: 'Jane', email: '', phone: '', isChild: false },
         ],
       })
       expect(result.success).toBe(false)
@@ -140,8 +165,8 @@ describe('Validation Schemas', () => {
         type: 'group',
         groupName: 'The Smiths',
         guests: [
-          { id: 'adult-1', name: 'John', email: 'john@example.com', isChild: false, isInviteLead: true },
-          { id: 'child-1', name: 'Billy', email: '', isChild: true, parentGuestId: 'adult-1' },
+          { id: 'adult-1', name: 'John', email: 'john@example.com', phone: '', isChild: false, isInviteLead: true },
+          { id: 'child-1', name: 'Billy', email: '', phone: '', isChild: true, parentGuestId: 'adult-1' },
         ],
       })
       expect(result.success).toBe(false)

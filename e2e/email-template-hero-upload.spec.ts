@@ -14,7 +14,7 @@ test('hero image upload updates preview and selected file label', async ({ page 
     })
   })
 
-  await page.getByLabel(/Name/i).fill('Playwright Hero Template')
+  await page.locator('#template-name').fill('Playwright Hero Template')
   await page.getByLabel(/Subject/i).fill('Hero Upload Test')
 
   await page.locator('#template-hero-file').setInputFiles({

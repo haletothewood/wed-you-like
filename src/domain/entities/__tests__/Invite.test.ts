@@ -19,6 +19,7 @@ describe('Invite Entity', () => {
       expect(invite.guests).toHaveLength(1)
       expect(invite.guests[0].name).toBe('John Smith')
       expect(invite.guests[0].email).toBe('john@example.com')
+      expect(invite.guests[0].phone).toBe('')
     })
 
     it('should allow creating an invite with plus one', () => {
@@ -30,6 +31,16 @@ describe('Invite Entity', () => {
 
       expect(invite.plusOneAllowed).toBe(true)
       expect(invite.adultsCount).toBe(1)
+    })
+
+    it('should allow creating a phone-only invite', () => {
+      const invite = Invite.createIndividual({
+        guestName: 'Sam Taylor',
+        phone: '+447700900123',
+      })
+
+      expect(invite.guests[0].email).toBe('')
+      expect(invite.guests[0].phone).toBe('+447700900123')
     })
   })
 
@@ -85,7 +96,7 @@ describe('Invite Entity', () => {
       }).toThrow('Group invite requires at least two guests')
     })
 
-    it('should require at least one guest with an email', () => {
+    it('should require at least one guest with an email or phone', () => {
       expect(() => {
         Invite.createGroup({
           groupName: 'The Smiths',
@@ -94,7 +105,7 @@ describe('Invite Entity', () => {
             { id: 'adult-2', name: 'Jane Smith', email: '', isChild: false },
           ],
         })
-      }).toThrow('At least one guest must have an email address')
+      }).toThrow('At least one guest must have an email address or phone number')
     })
   })
 
@@ -134,6 +145,14 @@ describe('Invite Entity', () => {
       }).toThrow('Guest name is required')
     })
 
+    it('should require a contact method', () => {
+      expect(() => {
+        Invite.createIndividual({
+          guestName: 'John Smith',
+        })
+      }).toThrow('At least one contact method is required')
+    })
+
     it('should require valid email format', () => {
       expect(() => {
         Invite.createIndividual({
@@ -141,6 +160,15 @@ describe('Invite Entity', () => {
           email: 'invalid-email',
         })
       }).toThrow('Invalid email format')
+    })
+
+    it('should require valid phone format', () => {
+      expect(() => {
+        Invite.createIndividual({
+          guestName: 'John Smith',
+          phone: 'not-a-phone',
+        })
+      }).toThrow('Invalid phone format')
     })
 
     it('should require group name for group invites', () => {

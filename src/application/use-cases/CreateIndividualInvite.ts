@@ -3,7 +3,8 @@ import type { InviteRepository } from '@/domain/repositories/InviteRepository'
 
 export interface CreateIndividualInviteRequest {
   guestName: string
-  email: string
+  email?: string
+  phone?: string
   plusOneAllowed?: boolean
 }
 
@@ -21,6 +22,7 @@ export class CreateIndividualInvite {
     const invite = Invite.createIndividual({
       guestName: request.guestName,
       email: request.email,
+      phone: request.phone,
       plusOneAllowed: request.plusOneAllowed,
     })
 

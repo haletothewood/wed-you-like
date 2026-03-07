@@ -7,6 +7,7 @@ export interface CreateGroupInviteRequest {
     id: string
     name: string
     email: string
+    phone?: string
     isChild: boolean
     parentGuestId?: string
     isInviteLead?: boolean

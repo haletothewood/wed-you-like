@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { DrizzleInviteRepository } from '@/infrastructure/database/repositories/DrizzleInviteRepository'
 import { DrizzleWeddingSettingsRepository } from '@/infrastructure/database/repositories/DrizzleWeddingSettingsRepository'
 import { ResendEmailService } from '@/infrastructure/email/ResendEmailService'
+import { findGuestWithEmail } from '@/application/invites/contactDetails'
 import { escapeHtml, getCampaignBaseUrl, recordCampaignRun } from '../_shared'
 
 const inviteRepository = new DrizzleInviteRepository()
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     for (const invite of invites) {
-      const primaryGuest = invite.guests.find((guest) => guest.email && guest.email.trim() !== '')
+      const primaryGuest = findGuestWithEmail(invite.guests)
 
       if (!primaryGuest) {
         result.skippedNoEmail++

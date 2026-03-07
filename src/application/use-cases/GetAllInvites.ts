@@ -18,12 +18,14 @@ export interface InviteDTO {
     id: string
     name: string
     email: string
+    phone: string
     isPlusOne: boolean
     isChild: boolean
     parentGuestId?: string
     isInviteLead: boolean
   }>
   sentAt: string | null
+  sentVia: 'email' | 'whatsapp' | null
   createdAt: string
   rsvpStatus: {
     hasResponded: boolean
@@ -141,6 +143,7 @@ export class GetAllInvites {
       plusOneAllowed: invite.plusOneAllowed,
       guests: invite.guests,
       sentAt: invite.sentAt?.toISOString() || null,
+      sentVia: invite.sentVia,
       createdAt: invite.createdAt.toISOString(),
       rsvpStatus: {
         hasResponded: !!rsvp,
