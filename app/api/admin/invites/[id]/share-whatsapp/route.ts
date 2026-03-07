@@ -20,13 +20,12 @@ type ShareMode = 'invite' | 'reminder'
 const buildShareMessage = (input: {
   mode: ShareMode
   label: string
-  coupleNames: string
   rsvpUrl: string
   deadline?: string
 }): string => {
   if (input.mode === 'reminder') {
     return [
-      `Hi ${input.label}, just a reminder to RSVP for ${input.coupleNames}'s wedding.`,
+      `Hi ${input.label}, just a reminder to RSVP for our wedding.`,
       input.deadline ? `Please RSVP by ${input.deadline}.` : null,
       `Your RSVP link: ${input.rsvpUrl}`,
     ]
@@ -35,7 +34,7 @@ const buildShareMessage = (input: {
   }
 
   return [
-    `Hi ${input.label}, we'd love for you to join us for ${input.coupleNames}'s wedding.`,
+    `Hi ${input.label}, we'd love for you to join us for our wedding.`,
     `Please RSVP using your personal link: ${input.rsvpUrl}`,
   ].join('\n\n')
 }
@@ -77,13 +76,9 @@ export async function POST(
     const baseUrl = getCampaignBaseUrl(request)
     const rsvpUrl = `${baseUrl}/rsvp/${encodeURIComponent(invite.token)}`
     const label = getInviteLabel(invite)
-    const coupleNames = weddingSettings
-      ? `${weddingSettings.partner1Name} & ${weddingSettings.partner2Name}`
-      : 'the couple'
     const message = buildShareMessage({
       mode,
       label,
-      coupleNames,
       rsvpUrl,
       deadline: weddingSettings?.rsvpDeadline,
     })

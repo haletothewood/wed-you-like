@@ -15,12 +15,13 @@ export interface CampaignRunSummary {
 
 export const getCampaignBaseUrl = (_request?: Request): string => {
   const configuredBaseUrl = process.env.BASE_URL?.trim()
+  const requestBaseUrl = _request ? new URL(_request.url).origin : null
 
-  if (!configuredBaseUrl) {
+  if (!configuredBaseUrl && !requestBaseUrl) {
     throw new Error('BASE_URL must be configured')
   }
 
-  const parsed = new URL(configuredBaseUrl)
+  const parsed = new URL(configuredBaseUrl || requestBaseUrl!)
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('BASE_URL must use http or https')
   }

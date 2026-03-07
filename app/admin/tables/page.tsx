@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,6 +47,11 @@ export default function TablesAdminPage() {
   const [creatingTable, setCreatingTable] = useState(false)
   const [updatingGuestId, setUpdatingGuestId] = useState<string | null>(null)
   const [deletingTableId, setDeletingTableId] = useState<string | null>(null)
+  const [pendingDeleteTable, setPendingDeleteTable] = useState<{
+    id: string
+    name: string
+    tableNumber: number
+  } | null>(null)
   const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   useEffect(() => {
@@ -102,11 +108,7 @@ export default function TablesAdminPage() {
     }
   }
 
-  const handleDeleteTable = async (tableId: string, tableNameValue: string, tableNo: number) => {
-    if (!confirm(`Delete ${tableNameValue} (Table ${tableNo})? This will remove its assignments.`)) {
-      return
-    }
-
+  const handleDeleteTable = async (tableId: string) => {
     setDeletingTableId(tableId)
     try {
       const response = await fetch(`/api/admin/tables/${tableId}`, { method: 'DELETE' })
@@ -243,7 +245,13 @@ export default function TablesAdminPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDeleteTable(table.id, table.name || `Table ${table.tableNumber}`, table.tableNumber)}
+                      onClick={() =>
+                        setPendingDeleteTable({
+                          id: table.id,
+                          name: table.name || `Table ${table.tableNumber}`,
+                          tableNumber: table.tableNumber,
+                        })
+                      }
                       disabled={deletingTableId === table.id}
                     >
                       {deletingTableId === table.id ? 'Deleting...' : 'Delete'}
@@ -312,6 +320,32 @@ export default function TablesAdminPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={pendingDeleteTable !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteTable(null)
+          }
+        }}
+        title="Delete table"
+        description={
+          pendingDeleteTable ? (
+            <p>
+              Delete <strong>{pendingDeleteTable.name}</strong> (Table{' '}
+              {pendingDeleteTable.tableNumber})? This will remove its current assignments.
+            </p>
+          ) : null
+        }
+        confirmLabel="Delete table"
+        confirmVariant="destructive"
+        loading={deletingTableId !== null}
+        onConfirm={() => {
+          if (!pendingDeleteTable) return
+          const current = pendingDeleteTable
+          setPendingDeleteTable(null)
+          void handleDeleteTable(current.id)
+        }}
+      />
     </div>
   )
 }
