@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -205,6 +206,7 @@ export default function EmailTemplatesPage() {
   const [showForm, setShowForm] = useState(false)
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
   const [testSendMessage, setTestSendMessage] = useState('')
@@ -510,8 +512,6 @@ export default function EmailTemplatesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this template?')) return
-
     try {
       const response = await fetch(`/api/admin/email-templates/${id}`, { method: 'DELETE' })
       if (!response.ok) {
@@ -957,7 +957,7 @@ export default function EmailTemplatesPage() {
                     </Button>
                     <Button
                       variant="destructive"
-                      onClick={() => handleDelete(template.id)}
+                      onClick={() => setPendingDeleteId(template.id)}
                     >
                       Delete
                     </Button>
@@ -989,6 +989,24 @@ export default function EmailTemplatesPage() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteId(null)
+          }
+        }}
+        title="Delete template"
+        description="This email template will be removed and can no longer be used for sends."
+        confirmLabel="Delete template"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (!pendingDeleteId) return
+          const id = pendingDeleteId
+          setPendingDeleteId(null)
+          void handleDelete(id)
+        }}
+      />
     </div>
   )
 }

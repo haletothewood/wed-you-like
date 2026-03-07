@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,6 +42,7 @@ export default function MealOptionsPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   const fetchMealOptions = useCallback(async () => {
@@ -94,8 +96,6 @@ export default function MealOptionsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this meal option?')) return
-
     try {
       const response = await fetch(`/api/admin/meal-options/${id}`, {
         method: 'DELETE',
@@ -264,7 +264,7 @@ export default function MealOptionsPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDelete(option.id)}
+                            onClick={() => setPendingDeleteId(option.id)}
                           >
                             Delete
                           </Button>
@@ -279,6 +279,24 @@ export default function MealOptionsPage() {
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteId(null)
+          }
+        }}
+        title="Delete meal option"
+        description="This meal option will no longer be available for guests to choose."
+        confirmLabel="Delete option"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (!pendingDeleteId) return
+          const id = pendingDeleteId
+          setPendingDeleteId(null)
+          void handleDelete(id)
+        }}
+      />
     </div>
   )
 }

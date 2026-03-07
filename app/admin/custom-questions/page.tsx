@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +45,7 @@ export default function CustomQuestionsPage() {
   const [options, setOptions] = useState<string[]>(['', ''])
   const [isRequired, setIsRequired] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'default' | 'destructive'; message: string } | null>(null)
 
   const fetchQuestions = useCallback(async () => {
@@ -133,8 +135,6 @@ export default function CustomQuestionsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return
-
     try {
       const response = await fetch(`/api/admin/custom-questions/${id}`, {
         method: 'DELETE',
@@ -312,7 +312,7 @@ export default function CustomQuestionsPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(question.id)}
+                      onClick={() => setPendingDeleteId(question.id)}
                     >
                       Delete
                     </Button>
@@ -323,6 +323,24 @@ export default function CustomQuestionsPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDeleteId(null)
+          }
+        }}
+        title="Delete question"
+        description="This question will be removed from future RSVP forms."
+        confirmLabel="Delete question"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (!pendingDeleteId) return
+          const id = pendingDeleteId
+          setPendingDeleteId(null)
+          void handleDelete(id)
+        }}
+      />
     </div>
   )
 }

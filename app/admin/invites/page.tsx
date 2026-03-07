@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/PageHeader'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { EmptyState } from '@/components/EmptyState'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -123,6 +124,11 @@ interface WhatsAppShareResponse {
   shareUrl: string
 }
 
+type InviteDialogState =
+  | { type: 'delete_invite'; inviteId: string; label: string }
+  | { type: 'bulk_email'; mode: BulkEmailMode; count: number }
+  | null
+
 const BULK_SKIP_REASON_LABELS: Record<BulkEmailSkipReason, string> = {
   invite_not_found: 'Invite not found',
   no_email: 'No email address',
@@ -136,11 +142,14 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 export default function InvitesAdmin() {
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [inviteType, setInviteType] = useState<'individual' | 'group' | 'bulk'>('individual')
   const [sending, setSending] = useState<string | null>(null)
   const [sharingWhatsapp, setSharingWhatsapp] = useState<string | null>(null)
+  const [creatingInviteType, setCreatingInviteType] = useState<'individual' | 'group' | null>(null)
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
+  const [dialogState, setDialogState] = useState<InviteDialogState>(null)
   const [notice, setNotice] = useState<{
     variant: 'default' | 'destructive'
     message: string
@@ -197,10 +206,6 @@ export default function InvitesAdmin() {
   const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    fetchInvites()
-  }, [])
-
-  useEffect(() => {
     setSelectedInviteIds((previous) => {
       const existingIds = new Set(invites.map((invite) => invite.id))
       const next = new Set(Array.from(previous).filter((id) => existingIds.has(id)))
@@ -238,7 +243,15 @@ export default function InvitesAdmin() {
     }, autoDismissMs)
   }
 
-  const fetchInvites = async () => {
+  const fetchInvites = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? false
+
+    if (background) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       const response = await fetch('/api/admin/invites')
       const data = await response.json()
@@ -247,12 +260,41 @@ export default function InvitesAdmin() {
       console.error('Error fetching invites:', error)
       setInvites([])
     } finally {
-      setLoading(false)
+      if (background) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchInvites()
+  }, [fetchInvites])
+
+  useEffect(() => {
+    const refreshInBackground = () => {
+      void fetchInvites({ background: true })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshInBackground()
+      }
+    }
+
+    window.addEventListener('focus', refreshInBackground)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', refreshInBackground)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchInvites])
 
   const handleCreateIndividual = async (e: React.FormEvent) => {
     e.preventDefault()
+    setCreatingInviteType('individual')
     try {
       const response = await fetch('/api/admin/invites', {
         method: 'POST',
@@ -266,21 +308,31 @@ export default function InvitesAdmin() {
         }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         setGuestName('')
         setEmail('')
         setPhone('')
         setPlusOneAllowed(false)
         setShowForm(false)
-        fetchInvites()
+        showNotice('Invite created.', 'default', 2500)
+        await fetchInvites({ background: true })
+        return
       }
+
+      showNotice(data.error || 'Failed to create invite')
     } catch (error) {
       console.error('Error creating invite:', error)
+      showNotice('Failed to create invite')
+    } finally {
+      setCreatingInviteType(null)
     }
   }
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault()
+    setCreatingInviteType('group')
     try {
       const response = await fetch('/api/admin/invites', {
         method: 'POST',
@@ -292,6 +344,8 @@ export default function InvitesAdmin() {
         }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         setGroupName('')
         setGroupGuests([
@@ -299,10 +353,17 @@ export default function InvitesAdmin() {
           { id: crypto.randomUUID(), name: '', email: '', phone: '', isChild: false, isInviteLead: false },
         ])
         setShowForm(false)
-        fetchInvites()
+        showNotice('Group invite created.', 'default', 2500)
+        await fetchInvites({ background: true })
+        return
       }
+
+      showNotice(data.error || 'Failed to create group invite')
     } catch (error) {
       console.error('Error creating group invite:', error)
+      showNotice('Failed to create group invite')
+    } finally {
+      setCreatingInviteType(null)
     }
   }
 
@@ -395,18 +456,21 @@ export default function InvitesAdmin() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this invite?')) return
-
     try {
       const response = await fetch(`/api/admin/invites/${id}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
-        fetchInvites()
+        showNotice('Invite deleted.', 'default', 2500)
+        await fetchInvites({ background: true })
+      } else {
+        const data = await response.json()
+        showNotice(data.error || 'Failed to delete invite')
       }
     } catch (error) {
       console.error('Error deleting invite:', error)
+      showNotice('Failed to delete invite')
     }
   }
 
@@ -421,7 +485,7 @@ export default function InvitesAdmin() {
 
       if (response.ok) {
         showNotice(`Email sent successfully to ${data.sentTo}`, 'default', 3000)
-        fetchInvites()
+        await fetchInvites({ background: true })
       } else {
         showNotice(`Error: ${data.error}`)
       }
@@ -449,7 +513,8 @@ export default function InvitesAdmin() {
       }
 
       if (data.markedSent) {
-        await fetchInvites()
+        showNotice('Invite marked as sent via WhatsApp.', 'default', 2200)
+        await fetchInvites({ background: true })
       }
 
       window.location.assign(data.shareUrl)
@@ -758,14 +823,26 @@ export default function InvitesAdmin() {
     }
   }
 
-  const handleRunBulkEmail = async () => {
+  const requestDeleteInvite = (inviteId: string, label: string) => {
+    setDialogState({ type: 'delete_invite', inviteId, label })
+  }
+
+  const requestBulkEmailRun = () => {
     if (bulkTargetInviteIds.length === 0) {
       showNotice('No invites available for bulk action')
       return
     }
 
-    const modeLabel = bulkEmailMode === 'invite' ? 'invite emails' : 'reminder emails'
-    if (!confirm(`Send ${modeLabel} for ${bulkTargetInviteIds.length} invite(s)?`)) {
+    setDialogState({
+      type: 'bulk_email',
+      mode: bulkEmailMode,
+      count: bulkTargetInviteIds.length,
+    })
+  }
+
+  const handleRunBulkEmail = async () => {
+    if (bulkTargetInviteIds.length === 0) {
+      showNotice('No invites available for bulk action')
       return
     }
 
@@ -865,7 +942,7 @@ export default function InvitesAdmin() {
 
       setBulkRunSummary(summary)
       if (sent > 0) {
-        await fetchInvites()
+        await fetchInvites({ background: true })
       }
     } catch (error) {
       showNotice(error instanceof Error ? error.message : 'Failed to run bulk email send')
@@ -885,9 +962,12 @@ export default function InvitesAdmin() {
         title="Invite Management"
         description="Create and manage wedding invitations"
         action={
-          <Button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto">
-            {showForm ? 'Cancel' : 'Create Invite'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {refreshing && <Badge variant="outline">Refreshing…</Badge>}
+            <Button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto">
+              {showForm ? 'Cancel' : 'Create Invite'}
+            </Button>
+          </div>
         }
       />
 
@@ -972,7 +1052,9 @@ export default function InvitesAdmin() {
                   </Label>
                 </div>
 
-                <Button type="submit">Create Individual Invite</Button>
+                <Button type="submit" disabled={creatingInviteType !== null}>
+                  {creatingInviteType === 'individual' ? 'Creating...' : 'Create Individual Invite'}
+                </Button>
               </form>
             ) : inviteType === 'group' ? (
               <form onSubmit={handleCreateGroup} className="space-y-4">
@@ -1096,7 +1178,9 @@ export default function InvitesAdmin() {
                   ))}
                 </div>
 
-                <Button type="submit">Create Group Invite</Button>
+                <Button type="submit" disabled={creatingInviteType !== null}>
+                  {creatingInviteType === 'group' ? 'Creating...' : 'Create Group Invite'}
+                </Button>
               </form>
             ) : (
               <form onSubmit={handleCreateBulk} className="space-y-4">
@@ -1449,7 +1533,7 @@ export default function InvitesAdmin() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={handleRunBulkEmail}
+                  onClick={requestBulkEmailRun}
                   disabled={bulkTargetInviteIds.length === 0 || bulkSending || bulkPreviewing}
                 >
                   {bulkSending
@@ -1709,7 +1793,12 @@ export default function InvitesAdmin() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleDelete(invite.id)}
+                          onClick={() =>
+                            requestDeleteInvite(
+                              invite.id,
+                              invite.groupName || invite.guests[0]?.name || 'this invite'
+                            )
+                          }
                         >
                           Delete
                         </Button>
@@ -1728,6 +1817,56 @@ export default function InvitesAdmin() {
           </CardContent>
         </Card>
       )}
+      <ConfirmDialog
+        open={dialogState !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialogState(null)
+          }
+        }}
+        title={
+          dialogState?.type === 'delete_invite'
+            ? 'Delete invite'
+            : dialogState?.type === 'bulk_email'
+              ? 'Send bulk email'
+              : ''
+        }
+        description={
+          dialogState?.type === 'delete_invite' ? (
+            <p>
+              Delete <strong>{dialogState.label}</strong>? This removes the invite and its RSVP access
+              link.
+            </p>
+          ) : dialogState?.type === 'bulk_email' ? (
+            <p>
+              Send {dialogState.mode === 'invite' ? 'invite emails' : 'reminder emails'} for{' '}
+              <strong>{dialogState.count}</strong> invite{dialogState.count === 1 ? '' : 's'}?
+            </p>
+          ) : null
+        }
+        confirmLabel={
+          dialogState?.type === 'delete_invite'
+            ? 'Delete invite'
+            : dialogState?.type === 'bulk_email'
+              ? 'Send emails'
+              : 'Confirm'
+        }
+        confirmVariant={dialogState?.type === 'delete_invite' ? 'destructive' : 'default'}
+        loading={bulkSending}
+        onConfirm={() => {
+          if (!dialogState) return
+
+          const current = dialogState
+          setDialogState(null)
+
+          if (current.type === 'delete_invite') {
+            void handleDelete(current.inviteId)
+            return
+          }
+
+          void handleRunBulkEmail()
+        }}
+      />
     </div>
   )
 }

@@ -444,12 +444,40 @@ export default function RSVP() {
   const mains = invite.mealOptions.filter((m) => m.courseType === 'MAIN')
   const desserts = invite.mealOptions.filter((m) => m.courseType === 'DESSERT')
   const hasPlusOneAdded = attendingGuests.some((g) => g.guestId === 'PLUS_ONE')
-  const totalSteps = 3
-  let completedSteps = 0
-  if (isAttending !== null) completedSteps++
-  if (isAttending && attendingGuests.length > 0) completedSteps++
-  if (isAttending && validationErrors.length === 0) completedSteps++
-  if (isAttending === false) completedSteps = totalSteps
+  const requiredCourseTypes = Array.from(new Set(invite.mealOptions.map((meal) => meal.courseType)))
+  const missingMealSelectionsCount = isAttending
+    ? attendingGuests.reduce((count, guest) => {
+        const guestSelections = mealSelections[guest.guestId] || {}
+        return (
+          count +
+          requiredCourseTypes.reduce(
+            (guestCount, courseType) => guestCount + (guestSelections[courseType] ? 0 : 1),
+            0
+          )
+        )
+      }, 0)
+    : 0
+  const missingRequiredAnswersCount = isAttending
+    ? invite.customQuestions.reduce((count, question) => {
+        if (!question.isRequired) return count
+        if (question.questionType === 'MULTIPLE_CHOICE') {
+          return count + ((multipleChoiceSelections[question.id] || []).length === 0 ? 1 : 0)
+        }
+
+        return count + ((questionResponses[question.id] || '').trim() ? 0 : 1)
+      }, 0)
+    : 0
+  const pendingDetailsCount = missingMealSelectionsCount + missingRequiredAnswersCount
+  const formStatusText =
+    isAttending === null
+      ? 'Start by telling us if you can make it.'
+      : isAttending === false
+        ? 'You can submit your response now.'
+        : attendingGuests.length === 0
+          ? 'Choose which guests are attending.'
+          : pendingDetailsCount > 0
+            ? `${pendingDetailsCount} detail${pendingDetailsCount === 1 ? '' : 's'} left before you can submit.`
+            : 'Everything looks ready to submit.'
 
   return (
     <div className="hero-wash min-h-screen p-4 py-8 sm:py-12">
@@ -459,7 +487,7 @@ export default function RSVP() {
             <CardTitle className="text-2xl sm:text-3xl">Wedding RSVP</CardTitle>
             <CardDescription className="text-lg">Guest: {displayName}</CardDescription>
             <div className="pt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.12em]">
-              Step {Math.min(completedSteps + 1, totalSteps)} of {totalSteps}
+              {formStatusText}
             </div>
           </CardHeader>
         </Card>
@@ -503,8 +531,16 @@ export default function RSVP() {
                     Plus one: {hasPlusOneAdded ? 'Added' : 'Optional'}
                   </Badge>
                 )}
-                <Badge variant={validationErrors.length === 0 ? 'default' : 'destructive'}>
-                  Validation: {validationErrors.length === 0 ? 'Ready to submit' : 'Needs attention'}
+                <Badge
+                  variant={
+                    pendingDetailsCount === 0 && validationErrors.length === 0
+                      ? 'default'
+                      : 'secondary'
+                  }
+                >
+                  {pendingDetailsCount === 0 && validationErrors.length === 0
+                    ? 'Ready to submit'
+                    : `${pendingDetailsCount} detail${pendingDetailsCount === 1 ? '' : 's'} remaining`}
                 </Badge>
               </div>
             </AlertDescription>
