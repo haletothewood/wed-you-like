@@ -48,9 +48,9 @@ export default function LoginPage() {
   return (
     <div className="hero-wash surface-grid min-h-screen px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-sm items-center">
-        <Card className="surface-panel w-full">
+        <Card className="w-full">
           <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto rounded-full border border-primary/25 bg-primary/10 p-3 text-primary">
+            <div className="mx-auto glass-pill p-3 text-primary">
               <LockKeyhole className="h-5 w-5" />
             </div>
             <CardTitle className="text-3xl font-semibold">Wed You Like</CardTitle>

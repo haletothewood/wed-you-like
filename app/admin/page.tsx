@@ -101,9 +101,9 @@ export default function Admin() {
         {features.map((feature) => (
           feature.enabled ? (
             <Link key={feature.href} href={feature.href}>
-              <Card className="surface-panel h-full cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl">
+              <Card className="h-full cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl">
                 <CardHeader>
-                  <div className="mb-3 inline-flex w-fit rounded-xl border border-primary/20 bg-primary/10 p-2.5 text-primary">
+                  <div className="glass-pill mb-3 inline-flex w-fit p-2.5 text-primary">
                     <feature.icon className="h-5 w-5" />
                   </div>
                   <CardTitle className="text-lg">{feature.title}</CardTitle>
@@ -123,7 +123,7 @@ export default function Admin() {
         ))}
       </div>
 
-      <Card className="surface-panel mt-6">
+      <Card className="mt-6">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -145,19 +145,19 @@ export default function Admin() {
             <div className="text-center text-muted-foreground py-4">Loading stats...</div>
           ) : stats ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="text-center">
+              <div className="glass-toolbar rounded-[1.2rem] p-5 text-center">
                 <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalInvites}</div>
                 <div className="text-sm text-muted-foreground mt-1">Invites sent</div>
               </div>
-              <div className="text-center">
+              <div className="glass-toolbar rounded-[1.2rem] p-5 text-center">
                 <div className="text-2xl font-bold text-primary sm:text-3xl">{stats.totalRsvps}</div>
                 <div className="text-sm text-muted-foreground mt-1">Responses</div>
               </div>
-              <div className="text-center">
+              <div className="glass-toolbar rounded-[1.2rem] p-5 text-center">
                 <div className="text-2xl font-bold text-success sm:text-3xl">{stats.attending}</div>
                 <div className="text-sm text-muted-foreground mt-1">Attending</div>
               </div>
-              <div className="text-center">
+              <div className="glass-toolbar rounded-[1.2rem] p-5 text-center">
                 <div className="text-2xl font-bold text-success sm:text-3xl">{stats.totalGuestsAttending}</div>
                 <div className="text-sm text-muted-foreground mt-1">Total Guests</div>
               </div>

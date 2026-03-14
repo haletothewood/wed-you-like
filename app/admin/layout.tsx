@@ -69,18 +69,18 @@ export default function AdminLayout({
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
-    <div className="flex min-h-screen overflow-hidden md:h-screen">
+    <div className="hero-wash surface-grid flex min-h-screen overflow-hidden md:h-screen">
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-md md:hidden"
           onClick={closeMobileMenu}
         />
       )}
 
       {/* Sidebar - Hidden on mobile, slides in when menu open */}
       <aside className={cn(
-        "w-[16rem] max-w-[85vw] md:max-w-none border-r border-border/70 bg-card text-foreground sticky top-0 h-screen flex flex-col z-50",
+        "glass-toolbar w-[16rem] max-w-[85vw] md:max-w-none text-foreground sticky top-0 h-screen flex flex-col z-50",
         "fixed md:static transition-all duration-300 ease-out",
         desktopNavExpanded ? "md:w-[16rem]" : "md:w-[4.75rem]",
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -92,7 +92,7 @@ export default function AdminLayout({
           </div>
           <button
             onClick={() => setDesktopNavExpanded((current) => !current)}
-            className="hidden md:inline-flex rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            className="hidden md:inline-flex rounded-lg p-1.5 text-muted-foreground hover:bg-muted/60"
             aria-label={desktopNavExpanded ? 'Collapse navigation' : 'Expand navigation'}
             title={desktopNavExpanded ? 'Collapse navigation' : 'Expand navigation'}
           >
@@ -101,14 +101,14 @@ export default function AdminLayout({
           {/* Close button for mobile */}
           <button
             onClick={closeMobileMenu}
-            className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted/60"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <Separator className="bg-border/70" />
+        <Separator className="bg-border/60" />
 
         <nav className="flex-1 py-4">
           <ul className="space-y-1">
@@ -122,7 +122,7 @@ export default function AdminLayout({
                     title={!desktopNavExpanded ? item.label : undefined}
                     className={cn(
                       'mx-3 flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all',
-                      'border border-transparent hover:border-border hover:bg-muted',
+                      'border border-transparent hover:border-border/70 hover:bg-card/55',
                       !desktopNavExpanded && 'md:justify-center md:px-2',
                       isActive
                         ? 'bg-primary/10 border-primary/25 font-semibold text-primary'
@@ -145,7 +145,7 @@ export default function AdminLayout({
             variant="outline"
             title={desktopNavExpanded ? undefined : 'Sign out'}
             className={cn(
-              "w-full border-border bg-card text-foreground hover:bg-muted",
+              "w-full justify-start",
               !desktopNavExpanded && "md:h-10 md:w-10 md:p-0"
             )}
           >
@@ -159,13 +159,13 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main className="flex-1 w-full min-h-screen overflow-y-auto md:h-screen">
-        <div className="sticky top-0 z-10 border-b border-border/70 bg-card/90 backdrop-blur-xl md:hidden">
+        <div className="sticky top-0 z-10 border-b border-border/60 bg-card/75 backdrop-blur-xl md:hidden">
           <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center">
               {/* Hamburger Menu Button - Only on Mobile */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden rounded-lg border border-border/70 bg-card p-2 text-foreground hover:bg-muted/70"
+                className="md:hidden rounded-lg border border-border/70 bg-card/70 p-2 text-foreground backdrop-blur-xl hover:bg-card"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
@@ -173,7 +173,7 @@ export default function AdminLayout({
             </div>
           </div>
         </div>
-        <div className="min-h-[calc(100vh-4rem)] bg-background/90 md:min-h-screen">
+        <div className="min-h-[calc(100vh-4rem)] md:min-h-screen">
           {children}
         </div>
       </main>

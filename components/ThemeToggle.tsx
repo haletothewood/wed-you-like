@@ -63,7 +63,7 @@ export function ThemeToggle() {
       variant="outline"
       size="icon"
       onClick={handleToggle}
-      className="fixed bottom-4 right-4 z-50 border-border/70 bg-card/90 backdrop-blur md:bottom-6 md:right-6"
+      className="fixed bottom-4 right-4 z-50 md:bottom-6 md:right-6"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
