@@ -39,7 +39,12 @@ export async function GET() {
           tableId: tableAssignments.tableId,
         })
         .from(tableAssignments),
-      getCampaignRunSummaries(['rsvp-reminder', 'thank-you', 'photo-share']),
+      getCampaignRunSummaries([
+        'rsvp-reminder',
+        'rsvp-completion',
+        'thank-you',
+        'photo-share',
+      ]),
     ])
 
     // Get attending RSVPs

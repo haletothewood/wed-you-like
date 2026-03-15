@@ -52,6 +52,7 @@ export const rsvps = sqliteTable('rsvps', {
   adultsAttending: integer('adults_attending').notNull().default(0),
   childrenAttending: integer('children_attending').notNull().default(0),
   dietaryRequirements: text('dietary_requirements'),
+  selectedGuestIds: text('selected_guest_ids').notNull().default('[]'),
   respondedAt: integer('responded_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

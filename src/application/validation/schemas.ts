@@ -178,6 +178,7 @@ export const submitRsvpSchema = z.object({
   childrenAttending: z.number().int().min(0, 'Children attending cannot be negative'),
   dietaryRequirements: z.string().optional(),
   plusOneName: z.string().optional(),
+  selectedGuestIds: z.array(z.string().min(1)).optional(),
   mealSelections: z.array(mealSelectionSchema).optional(),
   questionResponses: z.array(questionResponseSchema).optional(),
 })

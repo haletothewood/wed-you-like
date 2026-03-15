@@ -29,6 +29,7 @@ export interface SubmitRSVPRequest {
   childrenAttending: number
   dietaryRequirements?: string
   plusOneName?: string
+  selectedGuestIds?: string[]
   mealSelections?: MealSelectionInput[]
   questionResponses?: QuestionResponseInput[]
 }
@@ -106,6 +107,51 @@ export class SubmitRSVP {
       }
     }
 
+    const selectedGuestIds = request.isAttending
+      ? this.resolveSelectedGuestIds({
+          inviteGuests: invite.guests,
+          adultsAttending: request.adultsAttending,
+          childrenAttending: request.childrenAttending,
+          plusOneGuestId,
+          providedSelectedGuestIds: request.selectedGuestIds,
+        })
+      : []
+
+    if (request.isAttending) {
+      const allowedGuests = [
+        ...invite.guests.filter((guest) => !guest.isPlusOne),
+        ...(plusOneGuestId
+          ? [
+              {
+                id: plusOneGuestId,
+                isChild: false,
+              },
+            ]
+          : []),
+      ]
+      const allowedGuestById = new Map(allowedGuests.map((guest) => [guest.id, guest]))
+
+      for (const guestId of selectedGuestIds) {
+        if (!allowedGuestById.has(guestId)) {
+          throw new Error('Selected guest is not part of this invite')
+        }
+      }
+
+      const selectedAdults = selectedGuestIds.filter(
+        (guestId) => !allowedGuestById.get(guestId)?.isChild
+      ).length
+      const selectedChildren = selectedGuestIds.filter(
+        (guestId) => allowedGuestById.get(guestId)?.isChild
+      ).length
+
+      if (
+        selectedAdults !== request.adultsAttending ||
+        selectedChildren !== request.childrenAttending
+      ) {
+        throw new Error('Selected guests do not match the submitted attendance counts')
+      }
+    }
+
     const existingRSVP = await this.rsvpRepository.findByInviteId(invite.id)
 
     let rsvpId: string
@@ -116,6 +162,7 @@ export class SubmitRSVP {
         adultsAttending: request.adultsAttending,
         childrenAttending: request.childrenAttending,
         dietaryRequirements: request.dietaryRequirements,
+        selectedGuestIds,
       })
 
       await this.rsvpRepository.save(existingRSVP)
@@ -127,6 +174,7 @@ export class SubmitRSVP {
         adultsAttending: request.adultsAttending,
         childrenAttending: request.childrenAttending,
         dietaryRequirements: request.dietaryRequirements,
+        selectedGuestIds,
       })
 
       await this.rsvpRepository.save(rsvp)
@@ -256,5 +304,64 @@ export class SubmitRSVP {
       rsvpId,
       plusOneGuestId,
     }
+  }
+
+  private resolveSelectedGuestIds(input: {
+    inviteGuests: Array<{
+      id: string
+      isChild: boolean
+      isPlusOne: boolean
+    }>
+    adultsAttending: number
+    childrenAttending: number
+    plusOneGuestId?: string
+    providedSelectedGuestIds?: string[]
+  }): string[] {
+    const candidateGuestIds =
+      input.providedSelectedGuestIds && input.providedSelectedGuestIds.length > 0
+        ? input.providedSelectedGuestIds
+        : this.inferSelectedGuestIdsFromCounts(input)
+
+    return Array.from(
+      new Set(
+        candidateGuestIds
+          .map((guestId) =>
+            guestId === 'PLUS_ONE' ? input.plusOneGuestId || '' : guestId
+          )
+          .map((guestId) => guestId.trim())
+          .filter(Boolean)
+      )
+    )
+  }
+
+  private inferSelectedGuestIdsFromCounts(input: {
+    inviteGuests: Array<{
+      id: string
+      isChild: boolean
+      isPlusOne: boolean
+    }>
+    adultsAttending: number
+    childrenAttending: number
+    plusOneGuestId?: string
+  }): string[] {
+    const selectedGuestIds: string[] = []
+    const inviteGuests = input.inviteGuests.filter((guest) => !guest.isPlusOne)
+    const adultGuests = inviteGuests.filter((guest) => !guest.isChild)
+    const childGuests = inviteGuests.filter((guest) => guest.isChild)
+    const adultsToSelect = Math.max(
+      input.adultsAttending - (input.plusOneGuestId ? 1 : 0),
+      0
+    )
+
+    if (input.plusOneGuestId) {
+      selectedGuestIds.push(input.plusOneGuestId)
+    }
+
+    selectedGuestIds.push(
+      ...adultGuests.slice(0, adultsToSelect).map((guest) => guest.id),
+      ...childGuests.slice(0, input.childrenAttending).map((guest) => guest.id)
+    )
+
+    return selectedGuestIds
   }
 }

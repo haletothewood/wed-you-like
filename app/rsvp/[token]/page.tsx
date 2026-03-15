@@ -24,7 +24,6 @@ import {
 interface Guest {
   id: string
   name: string
-  email: string
   isPlusOne: boolean
   isChild: boolean
   parentGuestId?: string
@@ -60,9 +59,140 @@ interface InviteDetails {
     adultsAttending: number
     childrenAttending: number
     dietaryRequirements: string | null
+    selectedGuestIds: string[]
+    mealSelections: Array<{
+      guestId: string
+      mealOptionId: string
+      courseType: 'STARTER' | 'MAIN' | 'DESSERT'
+    }>
+    questionResponses: Array<{
+      questionId: string
+      responseText: string
+    }>
   }
   mealOptions: MealOption[]
   customQuestions: CustomQuestion[]
+}
+
+interface AttendingGuest {
+  guestId: string
+  name: string
+  isAdult: boolean
+}
+
+const PLUS_ONE_GUEST_ID = 'PLUS_ONE'
+
+const mapGuestToAttendingGuest = (guest: Guest): AttendingGuest => ({
+  guestId: guest.id,
+  name: guest.name,
+  isAdult: !guest.isChild,
+})
+
+const buildFallbackAttendingGuests = (invite: InviteDetails): AttendingGuest[] => {
+  const inviteGuests = invite.guests.filter((guest) => !guest.isPlusOne)
+  const adultGuests = inviteGuests.filter((guest) => !guest.isChild)
+  const childGuests = inviteGuests.filter((guest) => guest.isChild)
+  const fallbackGuests: AttendingGuest[] = []
+  const adultsToSelect = invite.rsvp
+    ? Math.min(invite.rsvp.adultsAttending, adultGuests.length)
+    : adultGuests.length
+  const childrenToSelect = invite.rsvp
+    ? Math.min(invite.rsvp.childrenAttending, childGuests.length)
+    : childGuests.length
+
+  fallbackGuests.push(...adultGuests.slice(0, adultsToSelect).map(mapGuestToAttendingGuest))
+  fallbackGuests.push(...childGuests.slice(0, childrenToSelect).map(mapGuestToAttendingGuest))
+
+  return fallbackGuests
+}
+
+const buildInitialAttendingGuests = (invite: InviteDetails): AttendingGuest[] => {
+  const persistedPlusOneGuest = invite.guests.find((guest) => guest.isPlusOne)
+  const selectedGuestIds = new Set(invite.rsvp?.selectedGuestIds || [])
+
+  if (invite.rsvp?.isAttending && selectedGuestIds.size > 0) {
+    const attendingGuests = invite.guests
+      .filter((guest) => !guest.isPlusOne && selectedGuestIds.has(guest.id))
+      .map(mapGuestToAttendingGuest)
+
+    if (persistedPlusOneGuest && selectedGuestIds.has(persistedPlusOneGuest.id)) {
+      attendingGuests.push({
+        guestId: PLUS_ONE_GUEST_ID,
+        name: persistedPlusOneGuest.name,
+        isAdult: true,
+      })
+    }
+
+    return attendingGuests
+  }
+
+  if (invite.rsvp?.isAttending && (invite.rsvp.mealSelections || []).length > 0) {
+    const guestIdsWithMealSelections = new Set(
+      invite.rsvp.mealSelections.map((selection) => selection.guestId)
+    )
+    const attendingGuests = invite.guests
+      .filter((guest) => !guest.isPlusOne && guestIdsWithMealSelections.has(guest.id))
+      .map(mapGuestToAttendingGuest)
+
+    if (persistedPlusOneGuest && guestIdsWithMealSelections.has(persistedPlusOneGuest.id)) {
+      attendingGuests.push({
+        guestId: PLUS_ONE_GUEST_ID,
+        name: persistedPlusOneGuest.name,
+        isAdult: true,
+      })
+    }
+
+    return attendingGuests
+  }
+
+  return buildFallbackAttendingGuests(invite)
+}
+
+const buildInitialMealSelections = (invite: InviteDetails): Record<string, Record<string, string>> => {
+  const persistedPlusOneGuest = invite.guests.find((guest) => guest.isPlusOne)
+
+  return (invite.rsvp?.mealSelections || []).reduce<Record<string, Record<string, string>>>(
+    (acc, selection) => {
+      const guestId =
+        persistedPlusOneGuest && selection.guestId === persistedPlusOneGuest.id
+          ? PLUS_ONE_GUEST_ID
+          : selection.guestId
+
+      acc[guestId] = {
+        ...acc[guestId],
+        [selection.courseType]: selection.mealOptionId,
+      }
+
+      return acc
+    },
+    {}
+  )
+}
+
+const buildInitialQuestionState = (invite: InviteDetails): {
+  textResponses: Record<string, string>
+  multipleChoiceResponses: Record<string, string[]>
+} => {
+  const questionById = new Map(invite.customQuestions.map((question) => [question.id, question]))
+  const textResponses: Record<string, string> = {}
+  const multipleChoiceResponses: Record<string, string[]> = {}
+
+  for (const response of invite.rsvp?.questionResponses || []) {
+    const question = questionById.get(response.questionId)
+    if (!question) continue
+
+    if (question.questionType === 'MULTIPLE_CHOICE') {
+      multipleChoiceResponses[response.questionId] = response.responseText
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+      continue
+    }
+
+    textResponses[response.questionId] = response.responseText
+  }
+
+  return { textResponses, multipleChoiceResponses }
 }
 
 export default function RSVP() {
@@ -83,7 +213,7 @@ export default function RSVP() {
 
   // Form state
   const [isAttending, setIsAttending] = useState<boolean | null>(null)
-  const [attendingGuests, setAttendingGuests] = useState<Array<{ guestId: string; name: string; isAdult: boolean }>>([])
+  const [attendingGuests, setAttendingGuests] = useState<AttendingGuest[]>([])
   const [plusOneName, setPlusOneName] = useState('')
   const [dietaryRequirements, setDietaryRequirements] = useState('')
   const [mealSelections, setMealSelections] = useState<Record<string, Record<string, string>>>({})
@@ -103,17 +233,20 @@ export default function RSVP() {
       const data = await response.json()
       setInvite(data.invite)
 
-      // Initialize attending guests list
-      const initialGuests = data.invite.guests.map((g: Guest) => ({
-        guestId: g.id,
-        name: g.name,
-        isAdult: !g.isChild,
-      }))
-      setAttendingGuests(initialGuests)
+      const initialAttendingGuests = buildInitialAttendingGuests(data.invite)
+      const { textResponses, multipleChoiceResponses } = buildInitialQuestionState(data.invite)
+      setAttendingGuests(initialAttendingGuests)
+      setMealSelections(buildInitialMealSelections(data.invite))
+      setQuestionResponses(textResponses)
+      setMultipleChoiceSelections(multipleChoiceResponses)
+      setPlusOneName('')
 
       if (data.invite.hasResponded && data.invite.rsvp) {
         setIsAttending(data.invite.rsvp.isAttending)
         setDietaryRequirements(data.invite.rsvp.dietaryRequirements || '')
+      } else {
+        setIsAttending(null)
+        setDietaryRequirements('')
       }
     } catch {
       setError('Failed to load invite details')
@@ -152,7 +285,11 @@ export default function RSVP() {
       nextValidationErrors.push('Select at least one guest who is attending.')
     }
 
-    if (isAttending && plusOneName.trim() && !attendingGuests.some((g) => g.guestId === 'PLUS_ONE')) {
+    if (
+      isAttending &&
+      plusOneName.trim() &&
+      !attendingGuests.some((g) => g.guestId === PLUS_ONE_GUEST_ID)
+    ) {
       nextValidationErrors.push('You entered a plus-one name. Select Add to include them.')
     }
 
@@ -232,7 +369,7 @@ export default function RSVP() {
             .filter((r) => r.responseText.trim() !== '')
         : undefined
 
-      const plusOneGuest = attendingGuests.find(g => g.guestId === 'PLUS_ONE')
+      const plusOneGuest = attendingGuests.find((g) => g.guestId === PLUS_ONE_GUEST_ID)
 
       const response = await fetch(`/api/rsvp/${token}`, {
         method: 'POST',
@@ -243,6 +380,7 @@ export default function RSVP() {
           childrenAttending: childrenCount,
           dietaryRequirements: isAttending ? dietaryRequirements : undefined,
           plusOneName: plusOneGuest?.name,
+          selectedGuestIds: isAttending ? attendingGuests.map((guest) => guest.guestId) : [],
           mealSelections: mealSelectionsArray,
           questionResponses: questionResponsesArray,
         }),
@@ -343,7 +481,7 @@ export default function RSVP() {
       if (isAttending) {
         return prev.filter(g => g.guestId !== guestId)
       } else {
-        const guest = invite?.guests.find(g => g.id === guestId)
+        const guest = invite?.guests.find(g => g.id === guestId && !g.isPlusOne)
         if (guest) {
           return [...prev, {
             guestId: guest.id,
@@ -360,7 +498,7 @@ export default function RSVP() {
     if (!plusOneName.trim() || !invite) return
     clearFeedbackState()
     setAttendingGuests((prev) => [...prev, {
-      guestId: 'PLUS_ONE',
+      guestId: PLUS_ONE_GUEST_ID,
       name: plusOneName,
       isAdult: true,
     }])
@@ -369,13 +507,13 @@ export default function RSVP() {
 
   const removePlusOne = () => {
     clearFeedbackState()
-    setAttendingGuests((prev) => prev.filter(g => g.guestId !== 'PLUS_ONE'))
+    setAttendingGuests((prev) => prev.filter((g) => g.guestId !== PLUS_ONE_GUEST_ID))
     setMissingMealSelectionKeys((prev) =>
-      prev.filter((key) => !key.startsWith('PLUS_ONE:'))
+      prev.filter((key) => !key.startsWith(`${PLUS_ONE_GUEST_ID}:`))
     )
     setMealSelections((prev) => {
       const updated = { ...prev }
-      delete updated['PLUS_ONE']
+      delete updated[PLUS_ONE_GUEST_ID]
       return updated
     })
   }
@@ -443,7 +581,8 @@ export default function RSVP() {
   const starters = invite.mealOptions.filter((m) => m.courseType === 'STARTER')
   const mains = invite.mealOptions.filter((m) => m.courseType === 'MAIN')
   const desserts = invite.mealOptions.filter((m) => m.courseType === 'DESSERT')
-  const hasPlusOneAdded = attendingGuests.some((g) => g.guestId === 'PLUS_ONE')
+  const inviteGuests = invite.guests.filter((guest) => !guest.isPlusOne)
+  const hasPlusOneAdded = attendingGuests.some((g) => g.guestId === PLUS_ONE_GUEST_ID)
   const requiredCourseTypes = Array.from(new Set(invite.mealOptions.map((meal) => meal.courseType)))
   const missingMealSelectionsCount = isAttending
     ? attendingGuests.reduce((count, guest) => {
@@ -596,7 +735,7 @@ export default function RSVP() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Main guest(s) */}
-                  {invite.guests.map((guest) => {
+                  {inviteGuests.map((guest) => {
                     const isSelected = attendingGuests.some(g => g.guestId === guest.id)
                     return (
                       <div key={guest.id} className="flex items-center space-x-3">
@@ -616,13 +755,13 @@ export default function RSVP() {
                   {invite.plusOneAllowed && (
                     <>
                       <Separator />
-                      {attendingGuests.some(g => g.guestId === 'PLUS_ONE') ? (
+                      {attendingGuests.some((g) => g.guestId === PLUS_ONE_GUEST_ID) ? (
                         <div className="space-y-2">
                           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center space-x-2">
                               <Badge variant="secondary">Plus One</Badge>
                               <span className="text-sm font-medium">
-                                {attendingGuests.find(g => g.guestId === 'PLUS_ONE')?.name}
+                                {attendingGuests.find((g) => g.guestId === PLUS_ONE_GUEST_ID)?.name}
                               </span>
                             </div>
                             <Button

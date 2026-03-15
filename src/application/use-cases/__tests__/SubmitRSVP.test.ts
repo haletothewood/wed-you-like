@@ -263,6 +263,45 @@ describe('SubmitRSVP', () => {
       ).rejects.toThrow('Cannot have more than 2 attendees')
     })
 
+    it('should persist the selected guest ids, mapping the plus-one placeholder to the saved guest', async () => {
+      const invite = createMockInvite({ plusOneAllowed: true })
+      vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
+      vi.mocked(rsvpRepository.findByInviteId).mockResolvedValue(null)
+      vi.mocked(guestRepository.findPlusOneByInviteId).mockResolvedValue(null)
+      vi.mocked(guestRepository.save).mockImplementation(
+        async (guest) => ({ ...guest, id: 'plus-one-guest-1' })
+      )
+
+      await useCase.execute({
+        token: 'token-123',
+        isAttending: true,
+        adultsAttending: 2,
+        childrenAttending: 0,
+        plusOneName: 'Jane Doe',
+        selectedGuestIds: ['guest-1', 'PLUS_ONE'],
+      })
+
+      const savedRsvp = vi.mocked(rsvpRepository.save).mock.calls[0]?.[0]
+      expect(savedRsvp?.selectedGuestIds).toEqual(['guest-1', 'plus-one-guest-1'])
+    })
+
+    it('should reject submissions when selected guests do not match the attendance counts', async () => {
+      const invite = createMockInvite()
+      vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
+      vi.mocked(rsvpRepository.findByInviteId).mockResolvedValue(null)
+      vi.mocked(guestRepository.findPlusOneByInviteId).mockResolvedValue(null)
+
+      await expect(
+        useCase.execute({
+          token: 'token-123',
+          isAttending: true,
+          adultsAttending: 0,
+          childrenAttending: 1,
+          selectedGuestIds: ['guest-1'],
+        })
+      ).rejects.toThrow('Selected guests do not match the submitted attendance counts')
+    })
+
     it('should reject meal selection for guest not in invite', async () => {
       const invite = createMockInvite({ plusOneAllowed: false })
       vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
@@ -390,6 +429,55 @@ describe('SubmitRSVP', () => {
       expect(questionResponseRepository.deleteByRSVPId).toHaveBeenCalledWith('rsvp-1')
       expect(mealSelectionRepository.saveMany).not.toHaveBeenCalled()
       expect(questionResponseRepository.saveMany).not.toHaveBeenCalled()
+    })
+
+    it('should pass the inferred selected guest ids into RSVP updates', async () => {
+      const invite = createMockInvite({
+        guests: [
+          {
+            id: 'guest-1',
+            name: 'John Smith',
+            email: 'john@example.com',
+            phone: '',
+            isPlusOne: false,
+            isChild: false,
+            isInviteLead: true,
+          },
+          {
+            id: 'guest-2',
+            name: 'Ellie Smith',
+            email: 'ellie@example.com',
+            phone: '',
+            isPlusOne: false,
+            isChild: true,
+            parentGuestId: 'guest-1',
+            isInviteLead: false,
+          },
+        ],
+        adultsCount: 1,
+        childrenCount: 1,
+      })
+      const existingRsvp = {
+        id: 'rsvp-1',
+        updateAttendance: vi.fn(),
+      }
+
+      vi.mocked(inviteRepository.findByToken).mockResolvedValue(invite)
+      vi.mocked(rsvpRepository.findByInviteId).mockResolvedValue(existingRsvp as never)
+      vi.mocked(guestRepository.findPlusOneByInviteId).mockResolvedValue(null)
+
+      await useCase.execute({
+        token: 'token-123',
+        isAttending: true,
+        adultsAttending: 1,
+        childrenAttending: 1,
+      })
+
+      expect(existingRsvp.updateAttendance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedGuestIds: ['guest-1', 'guest-2'],
+        })
+      )
     })
   })
 })

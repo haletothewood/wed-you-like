@@ -19,6 +19,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
         adultsAttending: rsvp.adultsAttending,
         childrenAttending: rsvp.childrenAttending,
         dietaryRequirements: rsvp.dietaryRequirements,
+        selectedGuestIds: JSON.stringify(rsvp.selectedGuestIds),
         respondedAt: rsvp.respondedAt,
         createdAt: rsvp.createdAt,
         updatedAt: rsvp.updatedAt,
@@ -30,6 +31,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
           adultsAttending: rsvp.adultsAttending,
           childrenAttending: rsvp.childrenAttending,
           dietaryRequirements: rsvp.dietaryRequirements,
+          selectedGuestIds: JSON.stringify(rsvp.selectedGuestIds),
           updatedAt: rsvp.updatedAt,
         },
       })
@@ -83,10 +85,24 @@ export class DrizzleRSVPRepository implements RSVPRepository {
     adultsAttending: number
     childrenAttending: number
     dietaryRequirements: string | null
+    selectedGuestIds: string
     respondedAt: Date
     createdAt: Date
     updatedAt: Date
   }): RSVP {
+    let selectedGuestIds: string[] = []
+
+    try {
+      const parsed = JSON.parse(record.selectedGuestIds)
+      if (Array.isArray(parsed)) {
+        selectedGuestIds = parsed.filter(
+          (guestId): guestId is string => typeof guestId === 'string' && guestId.trim() !== ''
+        )
+      }
+    } catch {
+      selectedGuestIds = []
+    }
+
     const rsvp = Object.create(RSVP.prototype)
     rsvp.props = {
       id: record.id,
@@ -95,6 +111,7 @@ export class DrizzleRSVPRepository implements RSVPRepository {
       adultsAttending: record.adultsAttending,
       childrenAttending: record.childrenAttending,
       dietaryRequirements: record.dietaryRequirements,
+      selectedGuestIds,
       respondedAt: record.respondedAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

@@ -7,6 +7,7 @@ export interface RSVPProps {
   adultsAttending: number
   childrenAttending: number
   dietaryRequirements: string | null
+  selectedGuestIds: string[]
   respondedAt: Date
   createdAt: Date
   updatedAt: Date
@@ -39,6 +40,10 @@ export class RSVP {
     return this.props.dietaryRequirements
   }
 
+  get selectedGuestIds(): string[] {
+    return this.props.selectedGuestIds
+  }
+
   get respondedAt(): Date {
     return this.props.respondedAt
   }
@@ -57,6 +62,7 @@ export class RSVP {
     adultsAttending: number
     childrenAttending: number
     dietaryRequirements?: string
+    selectedGuestIds?: string[]
   }): RSVP {
     RSVP.validate(params)
 
@@ -69,6 +75,7 @@ export class RSVP {
       adultsAttending: params.adultsAttending,
       childrenAttending: params.childrenAttending,
       dietaryRequirements: params.dietaryRequirements || null,
+      selectedGuestIds: RSVP.normalizeSelectedGuestIds(params.selectedGuestIds),
       respondedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -80,6 +87,7 @@ export class RSVP {
     adultsAttending: number
     childrenAttending: number
     dietaryRequirements?: string
+    selectedGuestIds?: string[]
   }): void {
     RSVP.validate({
       inviteId: this.props.inviteId,
@@ -90,6 +98,7 @@ export class RSVP {
     this.props.adultsAttending = params.adultsAttending
     this.props.childrenAttending = params.childrenAttending
     this.props.dietaryRequirements = params.dietaryRequirements || null
+    this.props.selectedGuestIds = RSVP.normalizeSelectedGuestIds(params.selectedGuestIds)
     this.props.updatedAt = new Date()
   }
 
@@ -114,5 +123,13 @@ export class RSVP {
     ) {
       throw new Error('At least one person must be attending')
     }
+  }
+
+  private static normalizeSelectedGuestIds(
+    selectedGuestIds: string[] | undefined
+  ): string[] {
+    return Array.from(
+      new Set((selectedGuestIds || []).map((guestId) => guestId.trim()).filter(Boolean))
+    )
   }
 }

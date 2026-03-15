@@ -2,6 +2,8 @@ import type { InviteRepository } from '@/domain/repositories/InviteRepository'
 import type { RSVPRepository } from '@/domain/repositories/RSVPRepository'
 import type { MealOptionRepository } from '@/domain/repositories/MealOptionRepository'
 import type { CustomQuestionRepository } from '@/domain/repositories/CustomQuestionRepository'
+import type { MealSelectionRepository } from '@/domain/repositories/MealSelectionRepository'
+import type { QuestionResponseRepository } from '@/domain/repositories/QuestionResponseRepository'
 import type { CourseType } from '@/domain/entities/MealOption'
 import type { QuestionType } from '@/domain/entities/CustomQuestion'
 
@@ -30,8 +32,6 @@ export interface InviteDetailsDTO {
   guests: Array<{
     id: string
     name: string
-    email: string
-    phone: string
     isPlusOne: boolean
     isChild: boolean
     parentGuestId?: string
@@ -43,6 +43,16 @@ export interface InviteDetailsDTO {
     adultsAttending: number
     childrenAttending: number
     dietaryRequirements: string | null
+    selectedGuestIds: string[]
+    mealSelections: Array<{
+      guestId: string
+      mealOptionId: string
+      courseType: CourseType
+    }>
+    questionResponses: Array<{
+      questionId: string
+      responseText: string
+    }>
   }
   mealOptions: MealOptionDTO[]
   customQuestions: CustomQuestionDTO[]
@@ -53,7 +63,9 @@ export class GetInviteByToken {
     private inviteRepository: InviteRepository,
     private rsvpRepository: RSVPRepository,
     private mealOptionRepository: MealOptionRepository,
-    private customQuestionRepository: CustomQuestionRepository
+    private customQuestionRepository: CustomQuestionRepository,
+    private mealSelectionRepository: MealSelectionRepository,
+    private questionResponseRepository: QuestionResponseRepository
   ) {}
 
   async execute(token: string): Promise<InviteDetailsDTO | null> {
@@ -68,6 +80,15 @@ export class GetInviteByToken {
       this.mealOptionRepository.findAll(),
       this.customQuestionRepository.findAllOrdered(),
     ])
+
+    const [existingMealSelections, existingQuestionResponses] = existingRSVP
+      ? await Promise.all([
+          Promise.all(
+            invite.guests.map(async (guest) => this.mealSelectionRepository.findByGuestId(guest.id))
+          ).then((results) => results.flat()),
+          this.questionResponseRepository.findByRSVPId(existingRSVP.id),
+        ])
+      : [[], []]
 
     const availableMealOptions = allMealOptions
       .filter((option) => option.isAvailable)
@@ -93,7 +114,14 @@ export class GetInviteByToken {
       adultsCount: invite.adultsCount,
       childrenCount: invite.childrenCount,
       plusOneAllowed: invite.plusOneAllowed,
-      guests: invite.guests,
+      guests: invite.guests.map((guest) => ({
+        id: guest.id,
+        name: guest.name,
+        isPlusOne: guest.isPlusOne,
+        isChild: guest.isChild,
+        parentGuestId: guest.parentGuestId,
+        isInviteLead: guest.isInviteLead,
+      })),
       hasResponded: existingRSVP !== null,
       rsvp: existingRSVP
         ? {
@@ -101,6 +129,16 @@ export class GetInviteByToken {
             adultsAttending: existingRSVP.adultsAttending,
             childrenAttending: existingRSVP.childrenAttending,
             dietaryRequirements: existingRSVP.dietaryRequirements,
+            selectedGuestIds: existingRSVP.selectedGuestIds,
+            mealSelections: existingMealSelections.map((selection) => ({
+              guestId: selection.guestId,
+              mealOptionId: selection.mealOptionId,
+              courseType: selection.courseType,
+            })),
+            questionResponses: existingQuestionResponses.map((response) => ({
+              questionId: response.questionId,
+              responseText: response.responseText,
+            })),
           }
         : undefined,
       mealOptions: availableMealOptions,

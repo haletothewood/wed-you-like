@@ -57,6 +57,13 @@
       "when": 1772880000000,
       "tag": "0007_handy_whatsapp_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1773571671978,
+      "tag": "0008_special_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

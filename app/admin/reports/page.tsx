@@ -43,9 +43,9 @@ interface ReportData {
   }>
   campaignRuns: Partial<
     Record<
-      'rsvp-reminder' | 'thank-you' | 'photo-share',
+      'rsvp-reminder' | 'rsvp-completion' | 'thank-you' | 'photo-share',
       {
-        campaignKey: 'rsvp-reminder' | 'thank-you' | 'photo-share'
+        campaignKey: 'rsvp-reminder' | 'rsvp-completion' | 'thank-you' | 'photo-share'
         lastStatus: 'success' | 'partial' | 'failed'
         lastAttemptAt: number
         lastSuccessAt: number | null
@@ -56,7 +56,7 @@ interface ReportData {
   >
 }
 
-type CampaignKind = 'photo' | 'reminder' | 'thank-you'
+type CampaignKind = 'photo' | 'reminder' | 'completion' | 'thank-you'
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
@@ -64,6 +64,7 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState<string | null>(null)
   const [sendingPhotoCampaign, setSendingPhotoCampaign] = useState(false)
   const [sendingReminderCampaign, setSendingReminderCampaign] = useState(false)
+  const [sendingCompletionCampaign, setSendingCompletionCampaign] = useState(false)
   const [sendingThankYouCampaign, setSendingThankYouCampaign] = useState(false)
   const [feedback, setFeedback] = useState<{
     type: 'success' | 'error'
@@ -189,6 +190,37 @@ export default function ReportsPage() {
     }
   }
 
+  const handleSendCompletionCampaign = async () => {
+    setFeedback(null)
+    setSendingCompletionCampaign(true)
+    try {
+      const response = await fetch('/api/admin/campaigns/rsvp-completion', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send RSVP completion campaign')
+      }
+
+      setFeedback({
+        type: 'success',
+        title: 'RSVP completion campaign sent',
+        message: `Sent ${data.sent} of ${data.eligibleIncompleteAttending} incomplete attending invites. Failed ${data.failed}.`,
+      })
+    } catch (error) {
+      console.error('Error sending RSVP completion campaign:', error)
+      setFeedback({
+        type: 'error',
+        title: 'RSVP completion campaign failed',
+        message: error instanceof Error ? error.message : 'Failed to send RSVP completion campaign',
+      })
+    } finally {
+      setSendingCompletionCampaign(false)
+      await fetchReports()
+    }
+  }
+
   const handleSendThankYouCampaign = async () => {
     setFeedback(null)
     setSendingThankYouCampaign(true)
@@ -225,6 +257,10 @@ export default function ReportsPage() {
       title: 'Send RSVP reminders?',
       description: 'This sends reminder emails to pending invites (already sent, not yet responded).',
     },
+    completion: {
+      title: 'Send RSVP detail follow-ups?',
+      description: 'This sends update emails to attending invites that still need meal choices or required answers.',
+    },
     'thank-you': {
       title: 'Send thank-you emails?',
       description: 'This sends thank-you emails to attending invites that have not been thanked yet.',
@@ -237,9 +273,10 @@ export default function ReportsPage() {
 
   const campaignRunKeyByKind: Record<
     CampaignKind,
-    'rsvp-reminder' | 'thank-you' | 'photo-share'
+    'rsvp-reminder' | 'rsvp-completion' | 'thank-you' | 'photo-share'
   > = {
     reminder: 'rsvp-reminder',
+    completion: 'rsvp-completion',
     'thank-you': 'thank-you',
     photo: 'photo-share',
   }
@@ -284,6 +321,10 @@ export default function ReportsPage() {
 
     if (selected === 'reminder') {
       await handleSendReminderCampaign()
+      return
+    }
+    if (selected === 'completion') {
+      await handleSendCompletionCampaign()
       return
     }
     if (selected === 'thank-you') {
@@ -589,6 +630,26 @@ export default function ReportsPage() {
             className="w-full sm:w-auto"
           >
             {sendingReminderCampaign ? 'Sending...' : 'Send RSVP Reminders'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>RSVP Detail Follow-Up Campaign</CardTitle>
+          <CardDescription>
+            Send update emails to attending invites that still need meal choices or required answers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-3">{renderCampaignRunSummary('completion')}</div>
+          <Button
+            onClick={() => setPendingCampaign('completion')}
+            disabled={sendingCompletionCampaign}
+            variant="secondary"
+            className="w-full sm:w-auto"
+          >
+            {sendingCompletionCampaign ? 'Sending...' : 'Send RSVP Detail Follow-Ups'}
           </Button>
         </CardContent>
       </Card>

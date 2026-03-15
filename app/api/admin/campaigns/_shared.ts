@@ -1,7 +1,11 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/infrastructure/database/connection'
 
-export type CampaignRunKey = 'rsvp-reminder' | 'thank-you' | 'photo-share'
+export type CampaignRunKey =
+  | 'rsvp-reminder'
+  | 'rsvp-completion'
+  | 'thank-you'
+  | 'photo-share'
 export type CampaignRunStatus = 'success' | 'partial' | 'failed'
 
 export interface CampaignRunSummary {

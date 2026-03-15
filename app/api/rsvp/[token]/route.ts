@@ -16,6 +16,8 @@ const inviteRepository = new DrizzleInviteRepository()
 const rsvpRepository = new DrizzleRSVPRepository()
 const mealOptionRepository = new DrizzleMealOptionRepository()
 const customQuestionRepository = new DrizzleCustomQuestionRepository()
+const mealSelectionRepository = new DrizzleMealSelectionRepository()
+const questionResponseRepository = new DrizzleQuestionResponseRepository()
 
 const getClientIp = (request: Request): string => {
   const forwarded = request.headers.get('x-forwarded-for')
@@ -59,7 +61,9 @@ export async function GET(
       inviteRepository,
       rsvpRepository,
       mealOptionRepository,
-      customQuestionRepository
+      customQuestionRepository,
+      mealSelectionRepository,
+      questionResponseRepository
     )
     const invite = await getInviteByToken.execute(token)
 
@@ -132,6 +136,7 @@ export async function POST(
         childrenAttending: data.childrenAttending,
         dietaryRequirements: data.dietaryRequirements,
         plusOneName: data.plusOneName,
+        selectedGuestIds: data.selectedGuestIds,
         mealSelections: data.mealSelections,
         questionResponses: data.questionResponses,
       })
